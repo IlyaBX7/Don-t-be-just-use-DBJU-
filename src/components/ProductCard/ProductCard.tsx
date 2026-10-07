@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { Product } from '../../types/product';
 
 interface ProductCardProps {
@@ -8,7 +9,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product }: ProductCardProps) => {
   return (
-    <div className="card">
+    <Link href={`/product/${product.id}`} className="card">
       <div className="imageWrapper">
         <img 
           src={product.images[0] || '/placeholder.png'} 
@@ -18,21 +19,25 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       </div>
       
       <div className="content">
-        <span className="category">{product.category}</span>
+        <div className="cardHeader">
+          <span className="category">{product.category}</span>
+          <span className="rating">⭐ {product.ownerRating} ({product.reviewsCount})</span>
+        </div>
+        
         <h3 className="title">{product.name}</h3>
+        <p className="location">📍 {product.location}</p>
         
         <div className="priceBlock">
           <p className="rentPrice">
             <span>{product.rentalPricePerDay} ₴</span> / день
           </p>
-          <p className="buyPrice">Викуп: {product.purchasePrice} ₴</p>
+          <p className="minRent">Мінімум {product.minRentDays} дн. • Застава: {product.depositAmount} ₴</p>
         </div>
 
         <div className="actions">
-          <button className="rentBtn">В оренду</button>
-          <button className="buyBtn">Купити</button>
+          <button className="rentBtn">Переглянути</button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };

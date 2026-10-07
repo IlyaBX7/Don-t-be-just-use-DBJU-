@@ -1,21 +1,35 @@
 import { ProductCard } from '../components/ProductCard/ProductCard';
+import { Sidebar } from '../components/Sidebar/Sidebar';
 import { mockProducts } from '../data/mockProducts';
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-      <h1 style={{ marginBottom: '32px' }}>Каталог оренди техніки</h1>
+    <div className="pageLayout">
+      <Sidebar />
       
-      {/* Використовуємо CSS Grid для сітки товарів (inline-стилі для швидкості) */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-        gap: '24px' 
-      }}>
-        {mockProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
-    </main>
+      <main className="mainContent">
+        {/* Блок розумного пошуку */}
+        <section className="aiHeroBlock">
+          <h1 className="aiHeroTitle">Що плануєте робити?</h1>
+          <p className="aiHeroSubtitle">Опишіть ситуацію, і наш ШІ підбере необхідні речі (наприклад: "Їду на риболовлю з ночівлею" або "Треба зробити ремонт у ванній").</p>
+          
+          <div className="aiSearchWrapper">
+            <textarea 
+              className="aiSearchInput" 
+              placeholder="Опишіть вашу потребу тут..."
+              rows={3}
+            />
+            <button className="aiSearchBtn">✨ Підібрати речі</button>
+          </div>
+        </section>
+
+        <h2 className="sectionTitle">🔥 Популярне поруч</h2>
+        <div className="productsGrid">
+          {mockProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </main>
+    </div>
   );
 }
