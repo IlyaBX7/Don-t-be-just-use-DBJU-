@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getCurrentUser } from "../../../../lib/session";
-import { FIXED_COSTS_MONTHLY, breakEvenOrders, unitEconomics } from "../../../../lib/pricing";
+import { FIXED_COSTS_MONTHLY, INSURANCE_FUND_RATE, breakEvenOrders, unitEconomics } from "../../../../lib/pricing";
 
 // GET /api/admin/finance?month=YYYY-MM — фактичні фінанси платформи за місяць (лише для адміністратора).
 // Рахує за фінансовою моделлю DBJU: дохід = сервісні збори + комісії власників,
@@ -22,6 +22,8 @@ interface MonthTotals {
   support: number;
   tax: number;
   margin: number;
+  bonuses: number; // бонуси реферальної програми, якими оплачено оренди (маркетинг)
+  insurancePayouts: number; // виплати власникам зі страхового фонду за пошкодження
   fixedCosts: number;
   profit: number;
 }
@@ -42,7 +44,11 @@ async function totalsFor(month: string, fixedCosts: number): Promise<MonthTotals
   // Угода вважається завершеною, коли власник підтвердив повернення
   const rows = await prisma.booking.findMany({
     where: { status: "COMPLETED", completedAt: { gte: start, lt: end } },
-    select: { rentAmount: true, serviceFee: true, ownerCommission: true, ownerPayout: true, deliveryCost: true },
+    select: { rentAmount: true, serviceFee: true, ownerCommission: true, ownerPayout: true, deliveryCost: true, bonusUsed: true },
+  });
+  const fund = await prisma.dispute.aggregate({
+    where: { status: "RESOLVED", resolvedAt: { gte: start, lt: end } },
+    _sum: { awardedFromFund: true },
   });
 
   const t: MonthTotals = {
@@ -60,6 +66,8 @@ async function totalsFor(month: string, fixedCosts: number): Promise<MonthTotals
     support: 0,
     tax: 0,
     margin: 0,
+    bonuses: 0,
+    insurancePayouts: fund._sum.awardedFromFund ?? 0,
     fixedCosts,
     profit: 0,
   };
@@ -79,8 +87,9 @@ async function totalsFor(month: string, fixedCosts: number): Promise<MonthTotals
     t.support += u.support;
     t.tax += u.tax;
     t.margin += u.margin;
+    t.bonuses += b.bonusUsed;
   }
-  t.profit = t.margin - fixedCosts;
+  t.profit = t.margin - t.bonuses - fixedCosts;
   return t;
 }
 
@@ -105,10 +114,18 @@ export async function GET(request: NextRequest) {
 
   // Активні угоди — гроші вже сплачені, але ще не зароблені (річ в оренді)
   const pipeline = await prisma.booking.aggregate({
-    where: { status: { in: ["PAID", "PICKED_UP", "RETURNED"] } },
+    where: { status: { in: ["PAID", "PICKED_UP", "RETURNED", "DISPUTED"] } },
     _count: true,
     _sum: { serviceFee: true, ownerCommission: true, rentAmount: true },
   });
+
+  // Страховий фонд за весь час: відрахування 3% від завершених оренд мінус виплати
+  const [allRent, allPaid] = await Promise.all([
+    prisma.booking.aggregate({ where: { status: "COMPLETED" }, _sum: { rentAmount: true } }),
+    prisma.dispute.aggregate({ where: { status: "RESOLVED" }, _sum: { awardedFromFund: true } }),
+  ]);
+  const fundIn = Math.round((allRent._sum.rentAmount ?? 0) * INSURANCE_FUND_RATE);
+  const fundOut = allPaid._sum.awardedFromFund ?? 0;
 
   const avgMargin = totals.orders ? totals.margin / totals.orders : null;
   const avgOrder = totals.orders ? Math.round(totals.gmv / totals.orders) : null;
@@ -133,6 +150,7 @@ export async function GET(request: NextRequest) {
       basedOn: avgMargin !== null ? "actual" : "model",
       marginPerOrder: avgMargin !== null ? Math.round(avgMargin) : 110,
     },
+    insuranceFund: { contributed: fundIn, paidOut: fundOut, balance: fundIn - fundOut },
     pipeline: {
       orders: pipeline._count,
       gmv: pipeline._sum.rentAmount ?? 0,

@@ -13,9 +13,14 @@ import {
   makeInitials,
   normalizePhone,
 } from "../../../../lib/users";
+import { clientIp, hit } from "../../../../lib/rateLimit";
+import { makeReferralCode, REF_COOKIE } from "../../../../lib/referrals";
 
 export async function POST(request: Request) {
   try {
+    if (!(await hit(`register-ip:${clientIp(request.headers)}`, 5, 60 * 60 * 1000))) {
+      return NextResponse.json({ error: "Забагато реєстрацій з цієї мережі. Спробуйте пізніше." }, { status: 429 });
+    }
     const body = await request.json();
     // Підтримуємо і старий формат { name: "Ім'я Прізвище" }
     const legacy = cleanName(body.name).split(" ");
@@ -47,8 +52,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Реферальна програма: код друга з посилання (?ref=…) зберігається в cookie
+    const refCode = String(body.ref ?? request.headers.get("cookie")?.match(new RegExp(`${REF_COOKIE}=([A-Z0-9]{4,16})`))?.[1] ?? "")
+      .toUpperCase()
+      .slice(0, 16);
+    const referrer = refCode ? await prisma.user.findUnique({ where: { referralCode: refCode }, select: { id: true } }) : null;
+
     const newUser = await prisma.user.create({
       data: {
+        referralCode: makeReferralCode(),
+        referredById: referrer?.id ?? null,
         firstName,
         lastName,
         name: fullName(firstName, lastName),

@@ -26,9 +26,9 @@ export async function api<T>(url: string, init?: RequestInit & { json?: unknown 
   return data as T;
 }
 
-export async function uploadImage(file: File): Promise<string> {
+export async function uploadImage(file: File, kind: "product" | "avatar" | "report" = "product"): Promise<string> {
   const form = new FormData();
   form.append("file", file);
-  const { url } = await api<{ url: string }>("/api/uploads", { method: "POST", body: form });
+  const { url } = await api<{ url: string }>(`/api/uploads?kind=${kind}`, { method: "POST", body: form });
   return url;
 }

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
 import { getCurrentUser } from "../../../lib/session";
-import { isCategoryKey, productInclude, toApiProduct } from "../../../lib/products";
+import { isCategoryKey, productInclude, toApiProduct, toOwnerApiProduct } from "../../../lib/products";
 import { parseProductInput } from "../../../lib/productInput";
 
 // GET /api/products?category=repair&q=bosch — каталог (приховані не показуються)
@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       where.ownerId = user.id;
     } else {
       where.status = { not: "HIDDEN" };
+      where.owner = { blockedAt: null };
       if (owner) where.ownerId = owner;
     }
     if (isCategoryKey(category)) where.category = category;
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(products.map(toApiProduct));
+    return NextResponse.json(products.map((p) => (owner === "me" ? toOwnerApiProduct(p) : toApiProduct(p))));
   } catch (error) {
     console.error("Помилка завантаження товарів:", error);
     return NextResponse.json({ error: "Не вдалося завантажити товари" }, { status: 500 });
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       include: productInclude,
     });
 
-    return NextResponse.json(toApiProduct(created), { status: 201 });
+    return NextResponse.json(toOwnerApiProduct(created), { status: 201 });
   } catch (error) {
     console.error("Помилка створення товару:", error);
     return NextResponse.json({ error: "Не вдалося зберегти оголошення" }, { status: 500 });

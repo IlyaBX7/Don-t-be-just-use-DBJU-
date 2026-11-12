@@ -11,6 +11,7 @@ import { LoginRequired, PageLoading, ErrorBox } from "../../../components/LoginR
 import { api, uploadImage } from "../../../lib/api";
 import { PLUS_PRICE } from "../../../lib/pricing";
 import { formatDateTime } from "../../../lib/dates";
+import { DEMO_BANKS } from "../../../lib/verification";
 import type { CurrentUser } from "../../../types/user";
 
 const SECTIONS = [
@@ -136,7 +137,7 @@ function PersonalSection({ user }: { user: CurrentUser }) {
     setError(null);
     setSaved(null);
     try {
-      await setAvatar(await uploadImage(file));
+      await setAvatar(await uploadImage(file, "avatar"));
       setSaved("Фото оновлено");
     } catch (err) {
       setError(errText(err, "Не вдалося завантажити фото"));
@@ -220,98 +221,178 @@ function PersonalSection({ user }: { user: CurrentUser }) {
   );
 }
 
-/* ---------- 2. Верифікація через Дію (демо) ---------- */
+/* ---------- 2. Верифікація через Дію / BankID (демо) ---------- */
+
+type VerifyStep = "choose" | "qr" | "bank-login" | "consent" | "done";
 
 function DiiaSection({ user }: { user: CurrentUser }) {
   const { setUser } = useApp();
-  const [request, setRequest] = useState<{ requestCode: string } | null>(null);
+  const [step, setStep] = useState<VerifyStep>("choose");
+  const [method, setMethod] = useState<"DIIA" | "BANKID">("DIIA");
+  const [bank, setBank] = useState(DEMO_BANKS[0]);
+  const [req, setReq] = useState<{ id: string; code: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const call = (json: Record<string, unknown>) => api<{ id?: string; code?: string; status?: string; user?: CurrentUser }>("/api/user/verify", { method: "POST", json });
 
   const start = async () => {
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ verified: boolean; requestCode?: string }>("/api/user/verify");
-      if (r.requestCode) setRequest({ requestCode: r.requestCode });
-    } catch (err) {
-      setError(errText(err));
+      const r = await call({ step: "start", method, bank });
+      setReq({ id: r.id!, code: r.code! });
+      setStep(method === "DIIA" ? "qr" : "bank-login");
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Демо: «телефон сканує QR» через кілька секунд після показу коду
+  useEffect(() => {
+    if (step !== "qr" || !req) return;
+    const t = setTimeout(async () => {
+      try {
+        await call({ step: "scan", id: req.id });
+        setStep("consent");
+      } catch (e) {
+        setError(errText(e));
+        setStep("choose");
+      }
+    }, 3500);
+    return () => clearTimeout(t);
+  }, [step, req]);
+
+  const bankLogin = async () => {
+    if (!req) return;
+    setBusy(true);
+    try {
+      await call({ step: "scan", id: req.id });
+      setStep("consent");
+    } catch (e) {
+      setError(errText(e));
     } finally {
       setBusy(false);
     }
   };
 
   const confirm = async () => {
-    if (!request) return;
+    if (!req) return;
     setBusy(true);
     setError(null);
     try {
-      setUser(await api<CurrentUser>("/api/user/verify", { method: "POST", json: { requestCode: request.requestCode } }));
-      setRequest(null);
-    } catch (err) {
-      setError(errText(err));
-      setRequest(null);
+      const r = await call({ step: "confirm", id: req.id });
+      if (r.user) setUser(r.user);
+      setStep("done");
+    } catch (e) {
+      setError(errText(e));
+      setStep("choose");
     } finally {
       setBusy(false);
     }
   };
 
+  const reset = () => {
+    setStep("choose");
+    setReq(null);
+    setError(null);
+  };
+
   if (user.isVerified) {
     return (
-      <Section id="diia" title="Верифікація через Дію">
+      <Section id="diia" title="Верифікація особи">
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           <div className="dbju-diia-badge" style={{ padding: "6px 12px", fontSize: "13px" }}>
             <CheckIcon size={14} />
-            <span>ДІЯ ✓ Особу підтверджено</span>
+            <span>{user.verifiedVia === "BANKID" ? "BankID ✓" : "ДІЯ ✓"} Особу підтверджено</span>
           </div>
-          {user.verifiedAt && (
-            <span className="dbju-settings-hint">з {new Date(user.verifiedAt).toLocaleDateString("uk-UA")}</span>
-          )}
+          {user.verifiedAt && <span className="dbju-settings-hint" style={{ margin: 0 }}>з {new Date(user.verifiedAt).toLocaleDateString("uk-UA")}</span>}
         </div>
         <p className="dbju-settings-hint" style={{ marginTop: "10px" }}>
-          Орендарі та власники бачать позначку «ДІЯ ✓» поруч з вашим ім&apos;ям.
+          Орендарі та власники бачать позначку «ДІЯ ✓» поруч з вашим ім&apos;ям — вам охочіше довіряють речі.
         </p>
       </Section>
     );
   }
 
   return (
-    <Section
-      id="diia"
-      title="Верифікація через Дію"
-      hint="Підтверджена особа отримує позначку «ДІЯ ✓» — вам охочіше довіряють речі та швидше погоджують оренду."
-    >
-      {!request ? (
-        <button type="button" className="dbju-btn-primary" disabled={busy} onClick={start}>
-          <ShieldCheckIcon size={18} />
-          <span>{busy ? "Зачекайте..." : "Підтвердити через Дію"}</span>
-        </button>
-      ) : (
+    <Section id="diia" title="Верифікація особи" hint="Підтверджена особа отримує позначку «ДІЯ ✓»: вам охочіше довіряють речі, а бронювання погоджують швидше.">
+      <div className="dbju-demo-note" style={{ marginBottom: "12px" }}>
+        Демо-режим: справжнє підключення до Дії та BankID потребує договорів з Мінцифри та банками. Зараз процес лише імітується — реальні дані нікуди не передаються.
+      </div>
+
+      {step === "choose" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="dbju-verify-methods">
+            <button type="button" className={`dbju-verify-method ${method === "DIIA" ? "active" : ""}`} onClick={() => setMethod("DIIA")}>
+              <span className="dbju-verify-logo diia">Дія</span>
+              <span><strong>Через Дію</strong><br /><span className="dbju-settings-hint" style={{ margin: 0 }}>скануйте QR у застосунку</span></span>
+            </button>
+            <button type="button" className={`dbju-verify-method ${method === "BANKID" ? "active" : ""}`} onClick={() => setMethod("BANKID")}>
+              <span className="dbju-verify-logo bankid">ID</span>
+              <span><strong>Через BankID</strong><br /><span className="dbju-settings-hint" style={{ margin: 0 }}>вхід через ваш банк</span></span>
+            </button>
+          </div>
+          {method === "BANKID" && (
+            <select value={bank} onChange={(e) => setBank(e.target.value)} className="dbju-form-input" style={{ maxWidth: "280px" }} aria-label="Банк">
+              {DEMO_BANKS.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
+          <button type="button" className="dbju-btn-primary" style={{ alignSelf: "flex-start" }} disabled={busy} onClick={start}>
+            <ShieldCheckIcon size={18} />
+            <span>{busy ? "Зачекайте…" : method === "DIIA" ? "Підтвердити через Дію" : `Увійти через ${bank}`}</span>
+          </button>
+        </div>
+      )}
+
+      {step === "qr" && req && (
         <div className="dbju-diia-box">
           <div style={{ background: "#FFFFFF", padding: "14px", borderRadius: "16px", border: "1px solid var(--border-subtle)" }}>
             <QRCodePattern size={140} />
           </div>
           <div style={{ flex: 1, minWidth: "220px", display: "flex", flexDirection: "column", gap: "8px" }}>
-            <strong>Відскануйте QR-код у застосунку Дія</strong>
+            <strong>Відскануйте QR-код у Дії</strong>
             <ol style={{ paddingLeft: "18px", color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1.6 }}>
               <li>Відкрийте Дію → «Сканувати QR-код»</li>
-              <li>Перевірте код запиту: <strong style={{ letterSpacing: "1px" }}>{request.requestCode}</strong></li>
-              <li>Дозвольте передати ПІБ і дату народження</li>
+              <li>Перевірте код запиту: <strong style={{ letterSpacing: "1px" }}>{req.code}</strong></li>
             </ol>
-            <div className="dbju-demo-note">
-              Демо-режим: справжнє підключення до Дії потребує договору з Мінцифри. Поки що підтвердження імітується кнопкою нижче.
-            </div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <button type="button" className="dbju-btn-primary" disabled={busy} onClick={confirm}>
-                {busy ? "Перевіряємо..." : "Я підтвердив у Дії"}
-              </button>
-              <button type="button" className="dbju-btn-small" disabled={busy} onClick={() => setRequest(null)}>
-                Скасувати
-              </button>
-            </div>
+            <div className="dbju-chat-status"><span className="dbju-chat-dots" aria-hidden><i /><i /><i /></span>Очікуємо сканування…</div>
+            <button type="button" className="dbju-btn-small" style={{ alignSelf: "flex-start" }} onClick={reset}>Скасувати</button>
           </div>
         </div>
       )}
+
+      {step === "bank-login" && req && (
+        <div className="dbju-diia-box" style={{ flexDirection: "column" }}>
+          <strong>{bank} · BankID (демо)</strong>
+          <span className="dbju-settings-hint" style={{ margin: 0 }}>Код запиту {req.code}. У справжньому процесі тут відкриється сторінка вашого банку для входу.</span>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button type="button" className="dbju-btn-primary" disabled={busy} onClick={bankLogin}>Увійти в {bank}</button>
+            <button type="button" className="dbju-btn-small" onClick={reset}>Скасувати</button>
+          </div>
+        </div>
+      )}
+
+      {step === "consent" && (
+        <div className="dbju-diia-box" style={{ flexDirection: "column" }}>
+          <strong>✓ {method === "DIIA" ? "QR-код відскановано" : "Вхід у банк виконано"}</strong>
+          <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
+            DBJU запитує: <strong>прізвище, ім&apos;я, по батькові</strong> та <strong>дату народження</strong> — лише для підтвердження, що ви реальна людина.
+            Номер документа та адресу ми не отримуємо.
+          </span>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button type="button" className="dbju-btn-primary" disabled={busy} onClick={confirm}>
+              {busy ? "Перевіряємо…" : `Дозволити передачу даних (${method === "DIIA" ? "Дія" : bank})`}
+            </button>
+            <button type="button" className="dbju-btn-small" onClick={reset}>Відмовитися</button>
+          </div>
+        </div>
+      )}
+
       {error && <div style={{ marginTop: "10px" }}><ErrorBox message={error} /></div>}
     </Section>
   );

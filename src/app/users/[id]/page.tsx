@@ -13,6 +13,7 @@ import { useApp } from "../../../components/AppProvider";
 import { PageLoading, EmptyState } from "../../../components/LoginRequired";
 import { ReviewCard, Stars, pluralReviews, ratingText } from "../../../components/Reviews";
 import { api } from "../../../lib/api";
+import { ReportButton } from "../../../components/ReportButton";
 import { CATEGORY_BY_KEY } from "../../../lib/categories";
 import type { ApiReview } from "../../../lib/reviews";
 import type { Product } from "../../../types/product";
@@ -120,8 +121,10 @@ export default function PublicUserPage() {
               <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>На DBJU з {since}</div>
             </div>
           </div>
-          {isMe && (
+          {isMe ? (
             <Link href="/profile/edit" className="dbju-btn-small">Редагувати профіль</Link>
+          ) : (
+            <ReportButton userId={profile.id} label="Поскаржитися" />
           )}
         </div>
 

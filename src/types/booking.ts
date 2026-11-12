@@ -1,7 +1,20 @@
 import type { ProductCategoryKey } from "./product";
 
-export type BookingStatus = "PAID" | "PICKED_UP" | "RETURNED" | "COMPLETED" | "CANCELLED";
+export type BookingStatus = "PAID" | "PICKED_UP" | "RETURNED" | "DISPUTED" | "COMPLETED" | "CANCELLED";
 export type DeliveryMethod = "PICKUP" | "COURIER";
+
+export interface BookingDispute {
+  status: "OPEN" | "CONTESTED" | "RESOLVED";
+  reason: string;
+  photos: string[];
+  claimAmount: number;
+  renterResponse: string | null;
+  resolution: string | null;
+  awardedFromDeposit: number;
+  awardedFromFund: number;
+  createdAt: string;
+  resolvedAt: string | null;
+}
 
 export interface BookingParty {
   id: string;
@@ -50,6 +63,12 @@ export interface Booking {
   returnedAt: string | null;
   completedAt: string | null;
   cancelledAt: string | null;
+  pickupPhotos: string[]; // фото стану при отриманні (орендар)
+  handoverPhotos: string[]; // фото стану при передачі (власник)
+  ownerCompensation: number; // компенсація власнику за пошкодження
+  bonusUsed: number;
+  unreadMessages: number;
+  dispute: BookingDispute | null;
   reviewedByRenter: boolean;
   reviewedByOwner: boolean;
 }

@@ -14,31 +14,47 @@ enum Role {
 
 // Таблиця Користувачів
 model User {
-  id           String    @id @default(uuid())
-  name         String    @db.VarChar(100) // повне ім'я для показу = firstName + lastName
-  firstName    String    @default("") @db.VarChar(50)
-  lastName     String    @default("") @db.VarChar(50)
-  email        String    @unique @db.VarChar(191)
-  password     String    @db.VarChar(255) // scrypt: "salt:hash"
-  role         Role      @default(USER)
-  rating       Float     @default(0) // середня оцінка з таблиці Review (0 — відгуків ще немає)
-  reviewsCount Int       @default(0)
-  isVerified   Boolean   @default(false) // підтверджено через Дію
-  verifiedAt   DateTime?
-  phone        String?   @db.VarChar(32)
-  avatar       String?   @db.VarChar(255) // ініціали
-  avatarUrl    String?   @db.VarChar(255) // фото профілю (/api/uploads/...)
-  bio          String?   @db.VarChar(500) // «Про себе» на публічній сторінці
+  id            String    @id @default(uuid())
+  name          String    @db.VarChar(100) // повне ім'я для показу = firstName + lastName
+  firstName     String    @default("") @db.VarChar(50)
+  lastName      String    @default("") @db.VarChar(50)
+  email         String    @unique @db.VarChar(191)
+  password      String    @db.VarChar(255) // scrypt: "salt:hash"
+  role          Role      @default(USER)
+  rating        Float     @default(0) // середня оцінка з таблиці Review (0 — відгуків ще немає)
+  reviewsCount  Int       @default(0)
+  isVerified    Boolean   @default(false) // підтверджено через Дію
+  verifiedAt    DateTime?
+  phone         String?   @db.VarChar(32)
+  avatar        String?   @db.VarChar(255) // ініціали
+  avatarUrl     String?   @db.VarChar(255) // фото профілю (/api/uploads/...)
+  bio           String?   @db.VarChar(500) // «Про себе» на публічній сторінці
+  verifiedVia   String?   @db.VarChar(16) // DIIA | BANKID (демо)
+  blockedAt     DateTime? // заблоковано адміністратором
+  blockedReason String?   @db.VarChar(300)
+  referralCode  String?   @unique @db.VarChar(16)
+  referredById  String?
 
   products        Product[]
   sessions        Session[]
   favorites       Favorite[]
-  rentals         Booking[]     @relation("RenterBookings")
-  ownerOrders     Booking[]     @relation("OwnerBookings")
+  rentals         Booking[]             @relation("RenterBookings")
+  ownerOrders     Booking[]             @relation("OwnerBookings")
   payouts         Payout[]
   cards           PaymentCard[]
-  reviewsWritten  Review[]      @relation("ReviewAuthor")
-  reviewsReceived Review[]      @relation("ReviewTarget")
+  reviewsWritten  Review[]              @relation("ReviewAuthor")
+  reviewsReceived Review[]              @relation("ReviewTarget")
+  referredBy      User?                 @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals       User[]                @relation("Referrals")
+  messages        Message[]
+  notifications   Notification[]
+  itemRequests    ItemRequest[]
+  requestOffers   RequestOffer[]
+  bonuses         BonusTransaction[]
+  reportsMade     Report[]              @relation("ReportAuthor")
+  reportsAgainst  Report[]              @relation("ReportTargetUser")
+  disputesOpened  Dispute[]             @relation("DisputeOpener")
+  verifications   VerificationRequest[]
 
   plusUntil DateTime? // підписка DBJU+ активна до цієї дати
 
@@ -113,10 +129,12 @@ model Product {
   features    Json? // об'єкт { "Потужність": "800 Вт" }
   rentalCount Int           @default(0)
 
-  ownerId   String
-  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  bookings  Booking[]
-  favorites Favorite[]
+  ownerId       String
+  owner         User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+  favorites     Favorite[]
+  requestOffers RequestOffer[]
+  reports       Report[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -136,6 +154,7 @@ enum BookingStatus {
   PAID
   PICKED_UP
   RETURNED
+  DISPUTED
   COMPLETED
   CANCELLED
 }
@@ -146,12 +165,14 @@ model Booking {
   code String @unique @db.VarChar(32) // код замовлення
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   renterId  String
-  renter    User     @relation("RenterBookings", fields: [renterId], references: [id], onDelete: Cascade)
+  renter    User      @relation("RenterBookings", fields: [renterId], references: [id], onDelete: Cascade)
   ownerId   String
-  owner     User     @relation("OwnerBookings", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User      @relation("OwnerBookings", fields: [ownerId], references: [id], onDelete: Cascade)
   reviews   Review[]
+  messages  Message[]
+  dispute   Dispute?
 
   startDate DateTime @db.Date
   endDate   DateTime @db.Date // включно
@@ -169,9 +190,13 @@ model Booking {
   totalAmount     Int
   depositAmount   Int
 
-  status      BookingStatus @default(PAID)
-  returnPhoto String?       @db.VarChar(255)
-  ownerNote   String?       @db.VarChar(500)
+  status            BookingStatus @default(PAID)
+  returnPhoto       String?       @db.VarChar(255)
+  pickupPhotos      Json? // фото стану при отриманні (орендар)
+  handoverPhotos    Json? // фото стану при передачі (власник)
+  ownerCompensation Int           @default(0) // компенсація власнику за пошкодження (із застави / страхового фонду)
+  bonusUsed         Int           @default(0) // скільки бонусів орендар використав на цю оренду
+  ownerNote         String?       @db.VarChar(500)
 
   paidAt      DateTime  @default(now())
   pickedUpAt  DateTime?
@@ -248,4 +273,169 @@ model Review {
 
   @@unique([bookingId, authorId])
   @@index([targetId, createdAt])
+}
+
+// Повідомлення між орендарем і власником у межах бронювання
+model Message {
+  id        String    @id @default(uuid())
+  bookingId String
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  text      String    @db.VarChar(2000)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([bookingId, createdAt])
+}
+
+// Сповіщення на сайті (дзвіночок у хедері)
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @db.VarChar(40)
+  title     String    @db.VarChar(150)
+  body      String?   @db.VarChar(500)
+  link      String?   @db.VarChar(255)
+  dedupeKey String?   @unique @db.VarChar(191) // щоб нагадування не дублювалися
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+enum DisputeStatus {
+  OPEN // власник повідомив про пошкодження, чекаємо відповіді орендаря
+  CONTESTED // орендар не згоден — вирішує адміністратор
+  RESOLVED
+}
+
+// Суперечка про стан речі після повернення
+model Dispute {
+  id                 String        @id @default(uuid())
+  bookingId          String        @unique
+  booking            Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  openedById         String
+  openedBy           User          @relation("DisputeOpener", fields: [openedById], references: [id], onDelete: Cascade)
+  reason             String        @db.Text
+  photos             Json
+  claimAmount        Int // скільки власник просить компенсувати
+  status             DisputeStatus @default(OPEN)
+  renterResponse     String?       @db.Text
+  resolution         String?       @db.Text
+  awardedFromDeposit Int           @default(0)
+  awardedFromFund    Int           @default(0) // понад заставу — зі страхового фонду DBJU
+  resolvedById       String?
+  createdAt          DateTime      @default(now())
+  resolvedAt         DateTime?
+
+  @@index([status])
+}
+
+enum RequestStatus {
+  OPEN
+  CLOSED
+}
+
+// «Запити на речі»: люди пишуть, що шукають, власники пропонують свої оголошення
+model ItemRequest {
+  id             String         @id @default(uuid())
+  authorId       String
+  author         User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title          String         @db.VarChar(150)
+  description    String?        @db.VarChar(1000)
+  category       Category?
+  city           String?        @db.VarChar(80)
+  maxPricePerDay Int?
+  neededFrom     DateTime?      @db.Date
+  neededTo       DateTime?      @db.Date
+  status         RequestStatus  @default(OPEN)
+  offers         RequestOffer[]
+  createdAt      DateTime       @default(now())
+
+  @@index([status, createdAt])
+}
+
+model RequestOffer {
+  id        String      @id @default(uuid())
+  requestId String
+  request   ItemRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  ownerId   String
+  owner     User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  message   String?     @db.VarChar(500)
+  createdAt DateTime    @default(now())
+
+  @@unique([requestId, productId])
+}
+
+// Бонуси (реферальна програма): + нарахування, − використання при оплаті
+model BonusTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String   @db.VarChar(40) // REFERRAL_INVITER | REFERRAL_INVITEE | BOOKING | BOOKING_REFUND
+  bookingId String?
+  uniqueKey String?  @unique @db.VarChar(191) // захист від подвійного нарахування
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum ReportTarget {
+  PRODUCT
+  USER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// Скарги на оголошення чи користувача
+model Report {
+  id           String       @id @default(uuid())
+  reporterId   String
+  reporter     User         @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType   ReportTarget
+  productId    String?
+  product      Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  targetUserId String?
+  targetUser   User?        @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  reason       String       @db.VarChar(40)
+  details      String?      @db.VarChar(1000)
+  status       ReportStatus @default(OPEN)
+  adminNote    String?      @db.VarChar(500)
+  createdAt    DateTime     @default(now())
+  resolvedAt   DateTime?
+
+  @@index([status, createdAt])
+}
+
+// Ліміти спроб (вхід, реєстрація, помічник) — у базі, щоб працювало на кількох серверах
+model RateLimitHit {
+  id        String   @id @default(uuid())
+  key       String   @db.VarChar(191)
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
+// Демо-верифікація через Дію / BankID
+model VerificationRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method    String   @db.VarChar(16) // DIIA | BANKID
+  bank      String?  @db.VarChar(40)
+  code      String   @db.VarChar(16)
+  status    String   @default("PENDING") @db.VarChar(16) // PENDING | SCANNED | CONFIRMED
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

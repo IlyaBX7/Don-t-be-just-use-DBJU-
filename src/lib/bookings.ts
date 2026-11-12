@@ -5,7 +5,7 @@ import { CATEGORIES } from "./products";
 import { toISODate } from "./dates";
 
 // Статуси, при яких річ зайнята на ці дати
-export const BLOCKING_STATUSES: BookingStatus[] = ["PAID", "PICKED_UP", "RETURNED"];
+export const BLOCKING_STATUSES: BookingStatus[] = ["PAID", "PICKED_UP", "RETURNED", "DISPUTED"];
 
 const partySelect = { id: true, name: true, avatar: true, avatarUrl: true, phone: true } satisfies Prisma.UserSelect;
 
@@ -25,7 +25,11 @@ export const bookingInclude = {
   renter: { select: partySelect },
   owner: { select: partySelect },
   reviews: { select: { authorId: true } },
+  dispute: true,
+  messages: { where: { readAt: null }, select: { senderId: true } }, // для лічильника непрочитаних
 } satisfies Prisma.BookingInclude;
+
+const photos = (v: Prisma.JsonValue | null): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
 type BookingRow = Prisma.BookingGetPayload<{ include: typeof bookingInclude }>;
 
@@ -41,7 +45,9 @@ function party(u: BookingRow["renter"]): BookingParty {
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-export function toApiBooking(b: BookingRow): Booking {
+// viewerId — хто дивиться (для лічильника непрочитаних повідомлень).
+// Увага: не передавайте цю функцію напряму в .map() — індекс потрапить у viewerId.
+export function toApiBooking(b: BookingRow, viewerId?: string): Booking {
   const images = Array.isArray(b.product.images) ? b.product.images : [];
   const firstImage = typeof images[0] === "string" ? images[0] : null;
   return {
@@ -82,6 +88,25 @@ export function toApiBooking(b: BookingRow): Booking {
     returnedAt: iso(b.returnedAt),
     completedAt: iso(b.completedAt),
     cancelledAt: iso(b.cancelledAt),
+    pickupPhotos: photos(b.pickupPhotos),
+    handoverPhotos: photos(b.handoverPhotos),
+    ownerCompensation: b.ownerCompensation,
+    bonusUsed: b.bonusUsed,
+    unreadMessages: viewerId ? b.messages.filter((m) => m.senderId !== viewerId).length : 0,
+    dispute: b.dispute
+      ? {
+          status: b.dispute.status,
+          reason: b.dispute.reason,
+          photos: photos(b.dispute.photos),
+          claimAmount: b.dispute.claimAmount,
+          renterResponse: b.dispute.renterResponse,
+          resolution: b.dispute.resolution,
+          awardedFromDeposit: b.dispute.awardedFromDeposit,
+          awardedFromFund: b.dispute.awardedFromFund,
+          createdAt: b.dispute.createdAt.toISOString(),
+          resolvedAt: iso(b.dispute.resolvedAt),
+        }
+      : null,
     reviewedByRenter: b.reviews.some((r) => r.authorId === b.renterId),
     reviewedByOwner: b.reviews.some((r) => r.authorId === b.ownerId),
   };

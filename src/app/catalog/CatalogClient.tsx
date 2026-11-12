@@ -8,6 +8,12 @@ import { Footer } from "../../components/Footer/Footer";
 import { CategoryIcon } from "../../components/CategoryIcon";
 import { EmptyState, ErrorBox } from "../../components/LoginRequired";
 import { SearchIcon } from "../../components/Icons";
+import dynamic from "next/dynamic";
+
+const CatalogMap = dynamic(() => import("../../components/CatalogMap"), {
+  ssr: false,
+  loading: () => <div className="dbju-catalog-map dbju-map-loading">Завантаження карти…</div>,
+});
 import { api } from "../../lib/api";
 import { CATEGORY_BY_KEY, CATEGORY_LIST } from "../../lib/categories";
 import { formatDay, todayISO, addDays } from "../../lib/dates";
@@ -96,6 +102,7 @@ export default function CatalogClient({ initial }: { initial: CatalogFilters }) 
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [view, setView] = useState<"list" | "map">("list");
   const [booking, setBooking] = useState<Product | null>(null);
   const requestId = useRef(0);
   const today = todayISO();
@@ -374,6 +381,10 @@ export default function CatalogClient({ initial }: { initial: CatalogFilters }) 
                   </button>
                 ))}
               </div>
+              <div className="dbju-view-toggle" role="group" aria-label="Вигляд">
+                <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>☰ Список</button>
+                <button type="button" className={view === "map" ? "active" : ""} onClick={() => setView("map")}>🗺 Карта</button>
+              </div>
               <select value={filters.sort} onChange={(e) => update({ sort: e.target.value })} className="dbju-form-input dbju-sort-select" aria-label="Сортування">
                 {SORT_OPTIONS.map((o) => (
                   <option key={o.key} value={o.key}>{o.label}</option>
@@ -394,7 +405,15 @@ export default function CatalogClient({ initial }: { initial: CatalogFilters }) 
               </EmptyState>
             ) : (
               <div style={{ opacity: loading ? 0.5 : 1, transition: "opacity 0.15s" }}>
-                <div className="dbju-product-grid dbju-catalog-grid">
+                {view === "map" && (
+                  <>
+                    <CatalogMap items={items} />
+                    <p className="dbju-settings-hint" style={{ marginTop: "8px" }}>
+                      Місця на карті приблизні (до ~1 км) — точну адресу самовивозу орендар бачить після бронювання.
+                    </p>
+                  </>
+                )}
+                <div className="dbju-product-grid dbju-catalog-grid" style={view === "map" ? { display: "none" } : undefined}>
                   {items.map((p) => (
                     <ProductCard key={p.id} product={p} onBookClick={setBooking} />
                   ))}

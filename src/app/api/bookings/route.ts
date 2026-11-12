@@ -8,7 +8,9 @@ import {
   makeBookingCode,
   toApiBooking,
 } from "../../../lib/bookings";
-import { daysInclusive, isISODate, parseISODate, todayISO, addDays, formatDay, toISODate } from "../../../lib/dates";
+import { daysInclusive, isISODate, parseISODate, todayISO, addDays, formatDay, formatRange, toISODate } from "../../../lib/dates";
+import { notify } from "../../../lib/notify";
+import { bonusBalance } from "../../../lib/referrals";
 import { ACTIVE_RENTAL_STATUSES } from "../../../lib/products";
 import { quote, DELIVERY_OPTIONS, type DeliveryMethod } from "../../../lib/pricing";
 
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
     include: bookingInclude,
     orderBy: [{ startDate: "asc" }, { createdAt: "asc" }],
   });
-  return NextResponse.json(bookings.map(toApiBooking));
+  return NextResponse.json(bookings.map((b) => toApiBooking(b, user.id)));
 }
 
 // POST /api/bookings — бронювання та «оплата» оренди
@@ -68,6 +70,9 @@ export async function POST(request: Request) {
       await tx.$queryRaw`SELECT id FROM Product WHERE id = ${productId} FOR UPDATE`;
       const product = await tx.product.findUnique({ where: { id: productId } });
       if (!product || product.status === "HIDDEN") throw new BookingError("Товар недоступний", 404);
+      const owner = await tx.user.findUnique({ where: { id: product.ownerId }, select: { blockedAt: true } });
+      if (owner?.blockedAt) throw new BookingError("Товар недоступний", 404);
+      if (user.blockedAt) throw new BookingError("Ваш акаунт заблоковано. Зверніться в підтримку.", 403);
       if (product.ownerId === user.id) throw new BookingError("Не можна орендувати власну річ");
 
       // Поки річ в орендаря (або чекає підтвердження повернення) — нові бронювання закриті
@@ -108,8 +113,17 @@ export async function POST(request: Request) {
         isPlusActive(user.plusUntil)
       );
 
-      return tx.booking.create({
+      // Бонуси реферальної програми: зменшують суму для орендаря, власник отримує свою частку повністю
+      let bonusUsed = 0;
+      if (body.useBonus === true) {
+        await tx.$queryRaw`SELECT id FROM User WHERE id = ${user.id} FOR UPDATE`;
+        const balance = await bonusBalance(user.id, tx);
+        bonusUsed = Math.max(0, Math.min(balance, q.rentAmount + q.serviceFee));
+      }
+
+      const created = await tx.booking.create({
         data: {
+          bonusUsed,
           code: makeBookingCode(),
           productId,
           renterId: user.id,
@@ -127,14 +141,27 @@ export async function POST(request: Request) {
           deliveryCost: q.deliveryCost,
           protection: true, // захист включено в кожну оренду (страховий фонд з комісії платформи)
           protectionCost: 0,
-          totalAmount: q.totalAmount,
+          totalAmount: q.totalAmount - bonusUsed,
           depositAmount: product.depositAmount,
         },
         include: bookingInclude,
       });
+      if (bonusUsed > 0) {
+        await tx.bonusTransaction.create({
+          data: { userId: user.id, amount: -bonusUsed, reason: "BOOKING", bookingId: created.id, uniqueKey: `use:${created.id}` },
+        });
+      }
+      return created;
     });
 
-    return NextResponse.json(toApiBooking(created), { status: 201 });
+    await notify(created.ownerId, {
+      type: "NEW_BOOKING",
+      title: "Нове бронювання",
+      body: `${user.name} орендує «${created.product.name}» на ${formatRange(startDate, endDate)}. Ви отримаєте ${created.ownerPayout} ₴.`,
+      link: "/profile/listings",
+    });
+
+    return NextResponse.json(toApiBooking(created, user.id), { status: 201 });
   } catch (error) {
     if (error instanceof BookingError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

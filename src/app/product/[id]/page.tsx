@@ -9,6 +9,8 @@ import { FavoriteButton } from "../../../components/FavoriteButton";
 import { useApp } from "../../../components/AppProvider";
 import { Avatar } from "../../../components/Avatar";
 import { ProductReviews, Stars, pluralReviews, ratingText, type ProductReviewsData } from "../../../components/Reviews";
+import { AvailabilityCalendar } from "../../../components/AvailabilityCalendar";
+import { ReportButton } from "../../../components/ReportButton";
 import { isRentedNow, rentalLongLabel, rentalShortLabel } from "../../../lib/rentalStatus";
 import { BookingModal } from "../../../components/BookingModal";
 import { Footer } from "../../../components/Footer/Footer";
@@ -288,6 +290,11 @@ export default function ProductDetailPage() {
               )}
             </div>
 
+            {/* Календар зайнятості */}
+            {!isRentedNow(product) && (
+              <AvailabilityCalendar productId={product.id} onPick={user?.id === product.ownerId ? undefined : () => setShowBookingModal(true)} />
+            )}
+
             {/* Description */}
             <div style={{ marginTop: "8px" }}>
               <h3 style={{ fontSize: "17px", fontWeight: "800", marginBottom: "8px" }}>Опис</h3>
@@ -300,7 +307,7 @@ export default function ProductDetailPage() {
             {Object.keys(product.features).length > 0 && (
               <div>
                 <h3 style={{ fontSize: "17px", fontWeight: "800", marginBottom: "8px" }}>Характеристики</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}>
                   {Object.entries(product.features).map(([key, val]) => (
                     <div 
                       key={key} 
@@ -354,6 +361,11 @@ export default function ProductDetailPage() {
           </div>
         </div>
         {reviews && <ProductReviews data={reviews} ownerId={product.ownerId} />}
+        {user?.id !== product.ownerId && (
+          <div style={{ marginTop: "24px", textAlign: "right" }}>
+            <ReportButton productId={product.id} label="Поскаржитися на оголошення" />
+          </div>
+        )}
       </div>
 
       {/* Booking Checkout Modal (Screen 4) */}

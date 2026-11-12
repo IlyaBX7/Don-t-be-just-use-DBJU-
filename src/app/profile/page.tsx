@@ -175,6 +175,8 @@ export default function ProfilePage() {
                 {user.role === "ADMIN" && (
                   <MenuLink href="/admin/finance" icon={<WalletBagIcon size={20} />} title="Фінанси платформи" right="Дохід, маржа, беззбитковість" />
                 )}
+                <MenuLink href="/profile/referrals" icon={<WalletBagIcon size={20} />} title="Запросіть друзів" right={stats?.bonusBalance ? `бонусів: ${stats.bonusBalance} ₴` : "+100 ₴ вам і другу"} />
+                <MenuLink href="/requests" icon={<SearchIcon size={20} />} title="Запити на речі" right="Що шукають люди" />
                 <MenuLink href={`/users/${user.id}`} icon={<SearchIcon size={20} />} title="Мій публічний профіль" right="Речі та відгуки, як їх бачать інші" />
                 <MenuLink href="/help#faq" icon={<SearchIcon size={20} />} title="Як це працює" right="Правила, захист, FAQ" />
                 <a href="mailto:support@dbju.ua" className="dbju-profile-menu-item">

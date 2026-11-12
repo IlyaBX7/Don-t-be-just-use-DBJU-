@@ -26,10 +26,8 @@ export const MAX_USER_TURNS = 30;
 
 const g = globalThis as unknown as {
   dbjuAssistant?: Map<string, Conversation>;
-  dbjuAssistantRate?: Map<string, number[]>;
 };
 const conversations = (g.dbjuAssistant ??= new Map());
-const rate = (g.dbjuAssistantRate ??= new Map());
 
 function cleanup() {
   const now = Date.now();
@@ -59,21 +57,4 @@ export function createConversation(provider: AssistantProvider): Conversation {
   };
   conversations.set(c.id, c);
   return c;
-}
-
-// Простий ліміт: не більше N повідомлень на годину з однієї адреси
-const RATE_LIMIT = 40;
-const RATE_WINDOW_MS = 60 * 60 * 1000;
-
-export function checkRate(key: string): boolean {
-  const now = Date.now();
-  const hits = (rate.get(key) ?? []).filter((t: number) => now - t < RATE_WINDOW_MS);
-  if (hits.length >= RATE_LIMIT) {
-    rate.set(key, hits);
-    return false;
-  }
-  hits.push(now);
-  rate.set(key, hits);
-  if (rate.size > 5000) rate.clear();
-  return true;
 }

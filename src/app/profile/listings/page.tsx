@@ -9,6 +9,8 @@ import { LoginRequired, PageLoading, EmptyState, ErrorBox } from "../../../compo
 import { ProductThumb } from "../../../components/ProductThumb";
 import { BookingStatusPill, DELIVERY_LABEL } from "../../../components/BookingStatus";
 import { ReviewModal } from "../../../components/Reviews";
+import { PhotoPicker, PhotoStrip } from "../../../components/PhotoPicker";
+import { BookingChat } from "../../../components/BookingChat";
 import { api } from "../../../lib/api";
 import { formatDateTime, formatRange } from "../../../lib/dates";
 import { pluralDays } from "../../../lib/pricing";
@@ -42,7 +44,7 @@ export default function MyListingsPage() {
     if (user) load();
   }, [user, load]);
 
-  const activeBookings = (bookings ?? []).filter((b) => ["PAID", "PICKED_UP", "RETURNED"].includes(b.status));
+  const activeBookings = (bookings ?? []).filter((b) => ["PAID", "PICKED_UP", "RETURNED", "DISPUTED"].includes(b.status));
   const historyBookings = (bookings ?? []).filter((b) => b.status === "COMPLETED" || b.status === "CANCELLED").reverse();
   const needAction = activeBookings.filter((b) => b.status === "RETURNED").length;
 
@@ -168,7 +170,7 @@ function OwnerHistoryCard({ booking: b, onReviewed }: { booking: Booking; onRevi
           </div>
         </div>
         <div style={{ fontWeight: 800 }} title={b.status === "COMPLETED" ? `Оренда ${b.rentAmount} ₴ − комісія ${b.ownerCommission} ₴` : undefined}>
-          {b.status === "COMPLETED" ? `+${b.ownerPayout} ₴` : "—"}
+          {b.status === "COMPLETED" ? `+${b.ownerPayout + b.ownerCompensation} ₴` : "—"}
         </div>
         <BookingStatusPill status={b.status} />
         {canReview && (
@@ -194,19 +196,27 @@ function OwnerBookingCard({ booking: b, onUpdate }: { booking: Booking; onUpdate
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [handover, setHandover] = useState<string[]>([]);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [claim, setClaim] = useState({ reason: "", amount: "", photos: [] as string[] });
 
-  const act = async (action: "complete" | "cancel", confirmText?: string) => {
-    if (confirmText && !window.confirm(confirmText)) return;
+  const act = async (action: string, confirmText?: string, extra: Record<string, unknown> = {}) => {
+    if (confirmText && !window.confirm(confirmText)) return false;
     setBusy(true);
     setError(null);
     try {
-      onUpdate(await api<Booking>(`/api/bookings/${b.id}`, { method: "PATCH", json: { action, note } }));
+      onUpdate(await api<Booking>(`/api/bookings/${b.id}`, { method: "PATCH", json: { action, note, ...extra } }));
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Помилка");
+      return false;
     } finally {
       setBusy(false);
     }
   };
+
+  const maxClaim = b.depositAmount + 20000;
 
   return (
     <div className="dbju-active-rental-card" style={{ gap: "14px" }}>
@@ -228,6 +238,10 @@ function OwnerBookingCard({ booking: b, onUpdate }: { booking: Booking; onUpdate
             {b.renter.phone && ` · ${b.renter.phone}`} · {DELIVERY_LABEL[b.deliveryMethod]}
             {b.deliveryMethod === "COURIER" && b.deliveryAddress && ` (${b.deliveryAddress})`}
           </div>
+          <button type="button" className="dbju-btn-small" style={{ marginTop: "6px", padding: "4px 10px", fontSize: "12px" }} onClick={() => setChatOpen(true)}>
+            💬 Написати орендарю
+            {b.unreadMessages > 0 && <span className="dbju-unread-dot">{b.unreadMessages}</span>}
+          </button>
         </div>
         <div style={{ marginLeft: "auto" }}>
           <BookingStatusPill status={b.status} />
@@ -240,28 +254,95 @@ function OwnerBookingCard({ booking: b, onUpdate }: { booking: Booking; onUpdate
         {b.returnedAt && ` · повернено ${formatDateTime(b.returnedAt)}`}
       </div>
 
-      {b.status === "RETURNED" && (
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-start" }}>
-          {b.returnPhoto && (
-            <a href={b.returnPhoto} target="_blank" rel="noreferrer" title="Відкрити фото">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.returnPhoto} alt="Фотозвіт повернення" style={{ width: "160px", height: "120px", objectFit: "cover", borderRadius: "14px", border: "1px solid var(--border-subtle)" }} />
-            </a>
+      {/* Фото стану «до» і «після» — порівняйте перед підтвердженням */}
+      {(b.handoverPhotos.length > 0 || b.pickupPhotos.length > 0 || b.returnPhoto) && (
+        <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+          <PhotoStrip title="Ваші фото при передачі" photos={b.handoverPhotos} />
+          <PhotoStrip title="Фото орендаря при отриманні" photos={b.pickupPhotos} />
+          <PhotoStrip title="Фотозвіт повернення" photos={b.returnPhoto ? [b.returnPhoto] : []} />
+        </div>
+      )}
+
+      {b.status === "PAID" && b.handoverPhotos.length === 0 && (
+        <div className="dbju-ai-notice" style={{ flexDirection: "column", alignItems: "stretch" }}>
+          <span>📸 Перед передачею сфотографуйте стан речі — це ваш доказ, якщо при поверненні знайдуться пошкодження.</span>
+          <PhotoPicker value={handover} onChange={setHandover} max={4} kind="report" label="Фото стану" />
+          {handover.length > 0 && (
+            <button type="button" className="dbju-btn-small primary" style={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => act("handover", undefined, { photos: handover })}>
+              Зберегти фото стану
+            </button>
           )}
-          <div style={{ flex: 1, minWidth: "220px", display: "flex", flexDirection: "column", gap: "8px" }}>
-            <div style={{ fontWeight: 800 }}>Перевірте фотозвіт і підтвердіть повернення</div>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={500}
-              placeholder="Коментар для орендаря (необов'язково)"
-              className="dbju-form-input"
-            />
+        </div>
+      )}
+
+      {b.status === "RETURNED" && !disputeOpen && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ fontWeight: 800 }}>Перевірте стан речі: порівняйте фото при отриманні й поверненні</div>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={500}
+            placeholder="Коментар для орендаря (необов'язково)"
+            className="dbju-form-input"
+          />
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button type="button" className="dbju-btn-primary" disabled={busy} onClick={() => act("complete")}>
               Підтвердити — річ у порядку
             </button>
+            <button type="button" className="dbju-btn-small danger" disabled={busy} onClick={() => setDisputeOpen(true)}>
+              Є пошкодження
+            </button>
           </div>
+        </div>
+      )}
+
+      {b.status === "RETURNED" && disputeOpen && (
+        <div className="dbju-dispute-box">
+          <strong>Повідомити про пошкодження</strong>
+          <span style={{ fontSize: "13px" }}>
+            Збиток покривається із застави ({b.depositAmount} ₴), а якщо її не вистачає — зі страхового фонду DBJU (до 20 000 ₴).
+            Орендар може погодитися або оскаржити — тоді рішення ухвалить адміністратор за фото «до/після».
+          </span>
+          <textarea
+            value={claim.reason}
+            onChange={(e) => setClaim((c) => ({ ...c, reason: e.target.value }))}
+            rows={3}
+            maxLength={3000}
+            placeholder="Що саме пошкоджено і як це сталося, на вашу думку"
+            className="dbju-form-input"
+            style={{ resize: "vertical", fontFamily: "inherit" }}
+          />
+          <label className="dbju-filter-label" style={{ color: "inherit" }}>
+            Сума компенсації, ₴ (до {maxClaim})
+            <input type="number" min={1} max={maxClaim} value={claim.amount} onChange={(e) => setClaim((c) => ({ ...c, amount: e.target.value }))} className="dbju-form-input" style={{ maxWidth: "200px" }} />
+          </label>
+          <PhotoPicker value={claim.photos} onChange={(photos) => setClaim((c) => ({ ...c, photos }))} max={6} kind="report" label="Фото пошкодження" />
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="dbju-btn-small danger"
+              disabled={busy || claim.reason.trim().length < 10 || !claim.amount || claim.photos.length === 0}
+              onClick={async () => {
+                if (await act("dispute", undefined, { reason: claim.reason, claimAmount: Number(claim.amount), photos: claim.photos })) setDisputeOpen(false);
+              }}
+            >
+              Надіслати орендарю
+            </button>
+            <button type="button" className="dbju-btn-small" disabled={busy} onClick={() => setDisputeOpen(false)}>Скасувати</button>
+          </div>
+        </div>
+      )}
+
+      {b.status === "DISPUTED" && b.dispute && (
+        <div className="dbju-dispute-box">
+          <strong>Суперечка: ви просите {b.dispute.claimAmount} ₴</strong>
+          <span>
+            {b.dispute.status === "OPEN"
+              ? "Чекаємо відповіді орендаря."
+              : `Орендар оскаржив: «${b.dispute.renterResponse}». Рішення ухвалить адміністратор DBJU.`}
+          </span>
+          <PhotoStrip title="Фото пошкодження" photos={b.dispute.photos} />
         </div>
       )}
 
@@ -282,6 +363,15 @@ function OwnerBookingCard({ booking: b, onUpdate }: { booking: Booking; onUpdate
       )}
 
       {error && <ErrorBox message={error} />}
+
+      {chatOpen && (
+        <BookingChat
+          bookingId={b.id}
+          title={`${b.product.name} · ${formatRange(b.startDate, b.endDate)}`}
+          otherName={b.renter.name}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getCurrentUser } from "../../../../lib/session";
-import { productInclude, toApiProduct } from "../../../../lib/products";
+import { productInclude, toApiProduct, toOwnerApiProduct } from "../../../../lib/products";
 import { parseProductInput } from "../../../../lib/productInput";
 import { BLOCKING_STATUSES } from "../../../../lib/bookings";
 import { removeUnusedImages } from "../../../../lib/imageCleanup";
@@ -18,13 +18,13 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/products/[i
     if (!product) {
       return NextResponse.json({ error: "Товар не знайдено" }, { status: 404 });
     }
-    if (product.status === "HIDDEN") {
-      const user = await getCurrentUser();
-      if (user?.id !== product.ownerId && user?.role !== "ADMIN") {
-        return NextResponse.json({ error: "Товар не знайдено" }, { status: 404 });
-      }
+    const user = await getCurrentUser();
+    const privileged = user?.id === product.ownerId || user?.role === "ADMIN";
+    // Приховане оголошення або заблокований власник — бачать лише власник і адміністратор
+    if ((product.status === "HIDDEN" || product.owner.blockedAt) && !privileged) {
+      return NextResponse.json({ error: "Товар не знайдено" }, { status: 404 });
     }
-    return NextResponse.json(toApiProduct(product));
+    return NextResponse.json(privileged ? toOwnerApiProduct(product) : toApiProduct(product));
   } catch (error) {
     console.error("Помилка завантаження товару:", error);
     return NextResponse.json({ error: "Не вдалося завантажити товар" }, { status: 500 });
@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/produc
     const after = Array.isArray(updated.images) ? updated.images : [];
     await removeUnusedImages(before.filter((u) => !after.includes(u)));
 
-    return NextResponse.json(toApiProduct(updated));
+    return NextResponse.json(toOwnerApiProduct(updated));
   } catch (error) {
     console.error("Помилка оновлення товару:", error);
     return NextResponse.json({ error: "Не вдалося оновити оголошення" }, { status: 500 });

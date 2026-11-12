@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../lib/session";
 import { todayISO } from "../../../lib/dates";
 import { isPlusFor, type ProductCardData } from "../../../lib/assistant/tools";
-import { MAX_USER_TURNS, checkRate, createConversation, getConversation } from "../../../lib/assistant/store";
+import { MAX_USER_TURNS, createConversation, getConversation } from "../../../lib/assistant/store";
+import { clientIp, hit } from "../../../lib/rateLimit";
 import { currentProvider, type TurnContext } from "../../../lib/assistant/types";
 import { anthropicError, runAnthropicTurn } from "../../../lib/assistant/anthropic";
 import { geminiError, runGeminiTurn } from "../../../lib/assistant/gemini";
@@ -16,9 +17,6 @@ const MAX_STEPS = 6; // скільки разів поспіль модель м
 const MAX_MESSAGE_CHARS = 1000;
 const WEEKDAYS = ["неділя", "понеділок", "вівторок", "середа", "четвер", "пʼятниця", "субота"];
 
-function clientKey(req: NextRequest): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "local";
-}
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -28,7 +26,9 @@ export async function POST(req: NextRequest) {
 
   if (!message) return json(400, "Напишіть питання");
   if (message.length > MAX_MESSAGE_CHARS) return json(400, `Повідомлення задовге (до ${MAX_MESSAGE_CHARS} символів)`);
-  if (!checkRate(clientKey(req))) return json(429, "Ви надіслали багато повідомлень. Спробуйте пізніше.");
+  if (!(await hit(`assistant:${clientIp(req.headers)}`, 40, 60 * 60 * 1000))) {
+    return json(429, "Ви надіслали багато повідомлень. Спробуйте пізніше.");
+  }
 
   const provider = currentProvider();
   let conv = getConversation(body?.conversationId);

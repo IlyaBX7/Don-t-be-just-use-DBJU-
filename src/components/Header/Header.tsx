@@ -12,6 +12,7 @@ import {
 } from "../Icons";
 import { useApp } from "../AppProvider";
 import { Avatar } from "../Avatar";
+import { NotificationBell } from "../NotificationBell";
 
 export const Header = () => {
   const pathname = usePathname();
@@ -67,6 +68,13 @@ export const Header = () => {
               <span className="dbju-badge-count">{stats.activeRentals}</span>
             )}
           </Link>
+          <Link
+            href="/requests"
+            className={`dbju-nav-link ${pathname === "/requests" ? "active" : ""}`}
+            title="Що шукають люди — і чого бракує вам"
+          >
+            Запити
+          </Link>
         </nav>
 
         {/* User & Quick Actions */}
@@ -75,6 +83,8 @@ export const Header = () => {
             <PlusCircleIcon size={16} />
             <span>Здати річ</span>
           </Link>
+
+          <NotificationBell />
 
           <Link href="/favorites" className="dbju-round-icon-btn" title="Обране" style={{ position: "relative" }}>
             <HeartIcon size={20} />

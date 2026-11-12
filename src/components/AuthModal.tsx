@@ -128,7 +128,7 @@ export const AuthModal = ({
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {mode === "REGISTER" && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "10px" }}>
                 <div className="dbju-form-group">
                   <label className="dbju-form-label">Ім&apos;я</label>
                   <input

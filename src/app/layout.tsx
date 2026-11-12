@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Header } from "../components/Header/Header";
 import { AppProvider } from "../components/AppProvider";
 import { AssistantWidget } from "../components/AssistantWidget";
+import { MobileNav } from "../components/MobileNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
           <Header />
           {children}
           <AssistantWidget />
+          <MobileNav />
         </AppProvider>
       </body>
     </html>

@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeftIcon } from "../../../components/Icons";
-import { Footer } from "../../../components/Footer/Footer";
+import { AdminShell } from "../../../components/AdminShell";
 import { useApp } from "../../../components/AppProvider";
-import { LoginRequired, PageLoading, ErrorBox, EmptyState } from "../../../components/LoginRequired";
+import { PageLoading, ErrorBox } from "../../../components/LoginRequired";
 import { api } from "../../../lib/api";
 import { MONTHS_NOM } from "../../../lib/dates";
 import {
@@ -37,6 +35,8 @@ interface MonthTotals {
   support: number;
   tax: number;
   margin: number;
+  bonuses: number;
+  insurancePayouts: number;
   fixedCosts: number;
   profit: number;
 }
@@ -50,6 +50,7 @@ interface FinanceData {
   perOrder: { gmv: number; revenue: number; margin: number } | null;
   breakEven: { fixedCosts: number; ordersNeeded: number | null; basedOn: "actual" | "model"; marginPerOrder: number };
   pipeline: { orders: number; gmv: number; revenue: number };
+  insuranceFund: { contributed: number; paidOut: number; balance: number };
 }
 
 const uah = (n: number) => `${n < 0 ? "−" : ""}${Math.abs(Math.round(n)).toLocaleString("uk-UA")} ₴`;
@@ -95,50 +96,27 @@ export default function FinancePage() {
   if (loading) return <PageLoading />;
 
   return (
-    <>
-      <div className="dbju-page-container" style={{ maxWidth: "1100px" }}>
-        <div style={{ marginBottom: "16px" }}>
-          <Link href="/profile" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: 700, color: "var(--text-secondary)" }}>
-            <ArrowLeftIcon size={16} />
-            <span>Профіль</span>
-          </Link>
-        </div>
-        <h1 className="dbju-main-title" style={{ fontSize: "34px" }}>Фінанси платформи</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "15px", margin: "4px 0 20px" }}>
-          Розрахунок за фінансовою моделлю DBJU: комісія {pct(SERVICE_FEE_RATE)} з орендаря + {pct(OWNER_COMMISSION_RATE)} з власника.
-          Враховуються лише завершені оренди.
-        </p>
-
-        {!user ? (
-          <LoginRequired title="Увійдіть як адміністратор" text="Ця сторінка доступна лише адміністраторам DBJU." />
-        ) : user.role !== "ADMIN" ? (
-          <EmptyState icon="🔒" title="Доступ лише для адміністратора" text="Ця сторінка показує фінанси всієї платформи." />
-        ) : (
-          <>
-            <div className="dbju-finance-controls">
-              <label className="dbju-filter-label">
-                Місяць
-                <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="dbju-form-input" />
-              </label>
-              <label className="dbju-filter-label">
-                Постійні витрати, ₴/міс
-                <input type="number" min={0} step={1000} value={fixed} onChange={(e) => setFixed(e.target.value)} className="dbju-form-input" />
-              </label>
-            </div>
-
-            {error && <ErrorBox message={error} />}
-            {!data ? (
-              <PageLoading />
-            ) : (
-              <FinanceReport data={data} />
-            )}
-
-            <DealCalculator />
-          </>
-        )}
+    <AdminShell title="Фінанси платформи">
+      <p style={{ color: "var(--text-secondary)", fontSize: "15px", margin: "0 0 16px" }}>
+        Розрахунок за фінансовою моделлю DBJU: комісія {pct(SERVICE_FEE_RATE)} з орендаря + {pct(OWNER_COMMISSION_RATE)} з власника.
+        Враховуються лише завершені оренди.
+      </p>
+      <div className="dbju-finance-controls">
+        <label className="dbju-filter-label">
+          Місяць
+          <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="dbju-form-input" />
+        </label>
+        <label className="dbju-filter-label">
+          Постійні витрати, ₴/міс
+          <input type="number" min={0} step={1000} value={fixed} onChange={(e) => setFixed(e.target.value)} className="dbju-form-input" />
+        </label>
       </div>
-      <Footer />
-    </>
+
+      {error && <ErrorBox message={error} />}
+      {!data ? <PageLoading /> : <FinanceReport data={data} />}
+
+      <DealCalculator />
+    </AdminShell>
   );
 }
 
@@ -238,6 +216,7 @@ function FinanceReport({ data }: { data: FinanceData }) {
               <tr><td>Підтримка клієнтів</td><td>{SUPPORT_COST_PER_ORDER} ₴ за замовлення</td><td>−{uah(t.support)}</td><td>{t.orders ? `−${per(t.support)}` : "—"}</td></tr>
               <tr><td>Єдиний податок (ФОП 3 гр.)</td><td>{pct(SINGLE_TAX_RATE)} від доходу</td><td>−{uah(t.tax)}</td><td>{t.orders ? `−${per(t.tax)}` : "—"}</td></tr>
               <tr className="strong"><td>Маржинальний дохід</td><td></td><td>{uah(t.margin)}</td><td>{per(t.margin)}</td></tr>
+              <tr><td>Бонуси реферальної програми</td><td>маркетинг, оплачено бонусами</td><td>−{uah(t.bonuses)}</td><td>{t.orders ? `−${per(t.bonuses)}` : "—"}</td></tr>
               <tr><td>Постійні витрати</td><td>за місяць</td><td>−{uah(t.fixedCosts)}</td><td></td></tr>
               <tr className="strong"><td>Прибуток</td><td></td><td>{uah(t.profit)}</td><td></td></tr>
             </tbody>
@@ -257,6 +236,9 @@ function FinanceReport({ data }: { data: FinanceData }) {
               <tr><td>· з них доставка кур&apos;єром (без комісії)</td><td>{uah(t.delivery)}</td></tr>
               <tr className="strong"><td>Нараховано власникам (оренда − {pct(OWNER_COMMISSION_RATE)})</td><td>{uah(t.ownerPayouts)}</td></tr>
               <tr className="strong"><td>Залишилось платформі (збори + комісії)</td><td>{uah(t.revenue)}</td></tr>
+              <tr><td>Виплачено зі страхового фонду цього місяця</td><td>{uah(t.insurancePayouts)}</td></tr>
+              <tr><td>Страховий фонд за весь час: відраховано {pct(INSURANCE_FUND_RATE)} / виплачено</td><td>{uah(data.insuranceFund.contributed)} / {uah(data.insuranceFund.paidOut)}</td></tr>
+              <tr className="strong"><td>Залишок страхового фонду</td><td>{uah(data.insuranceFund.balance)}</td></tr>
             </tbody>
           </table>
         </div>

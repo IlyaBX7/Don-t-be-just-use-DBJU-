@@ -63,6 +63,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadSession();
   }, [loadSession]);
 
+  // Реферальне посилання ?ref=CODE — запам'ятовуємо на 30 днів, сервер прочитає при реєстрації
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
+      document.cookie = `dbju_ref=${ref.toUpperCase()}; path=/; max-age=${30 * 86400}; samesite=lax`;
+    }
+  }, []);
+
+  // Лічильники (сповіщення, оренди) оновлюються кожні 30 секунд, поки вкладка відкрита
+  useEffect(() => {
+    if (!user) return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") refreshStats();
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [user, refreshStats]);
+
   useEffect(() => {
     if (user) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- лічильники з сервера для нового користувача

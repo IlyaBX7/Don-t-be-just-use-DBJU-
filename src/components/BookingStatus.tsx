@@ -5,6 +5,7 @@ const STATUS_META: Record<BookingStatus, { label: string; cls: string }> = {
   PAID: { label: "Оплачено", cls: "paid" },
   PICKED_UP: { label: "В оренді", cls: "picked" },
   RETURNED: { label: "Повернено, на перевірці", cls: "returned" },
+  DISPUTED: { label: "Суперечка щодо стану", cls: "cancelled" },
   COMPLETED: { label: "Завершено", cls: "completed" },
   CANCELLED: { label: "Скасовано", cls: "cancelled" },
 };

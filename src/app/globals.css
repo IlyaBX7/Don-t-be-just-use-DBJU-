@@ -3400,3 +3400,374 @@ input, textarea, select {
   .dbju-chat-fab { padding: 0; width: 60px; justify-content: center; }
   .dbju-chat-fab.open { display: none; }
 }
+
+/* ===== 404 / помилка ===== */
+.dbju-status-page {
+  max-width: 560px;
+  text-align: center;
+  padding-top: 72px;
+  padding-bottom: 72px;
+}
+.dbju-status-code {
+  font-size: 72px;
+  font-weight: 900;
+  color: var(--brand-green);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.dbju-status-page h1 { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+.dbju-status-page p { color: var(--text-secondary); font-size: 15px; line-height: 1.5; margin-bottom: 20px; }
+.dbju-status-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ===== Фото стану, чат бронювання ===== */
+.dbju-photo-picker { display: flex; flex-direction: column; gap: 8px; }
+.dbju-photo-picker-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.dbju-photo-picker-item {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border-subtle);
+  display: block;
+}
+.dbju-photo-picker-item img { width: 100%; height: 100%; object-fit: cover; }
+.dbju-photo-picker-item button {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(17, 26, 20, 0.75);
+  color: #FFFFFF;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dbju-photo-picker-add {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  border: 2px dashed var(--border-strong);
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  padding: 4px;
+}
+.dbju-photo-strip { display: flex; flex-direction: column; gap: 6px; }
+.dbju-photo-strip-title { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+
+.dbju-booking-chat { max-width: 520px; height: min(640px, calc(100vh - 40px)); display: flex; flex-direction: column; }
+.dbju-booking-chat-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-canvas);
+  border-radius: 16px;
+  padding: 12px;
+  min-height: 200px;
+}
+.dbju-unread-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #DC2626;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  margin-left: 6px;
+}
+.dbju-dispute-box {
+  border: 1px solid #FCA5A5;
+  background: #FEF2F2;
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: #7F1D1D;
+}
+.dbju-dispute-box.resolved { border-color: var(--border-subtle); background: #F8FAFC; color: var(--text-secondary); }
+
+/* ===== Сповіщення (дзвіночок) ===== */
+.dbju-bell { position: relative; }
+.dbju-bell-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(380px, calc(100vw - 24px));
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: 0 18px 44px rgba(16, 25, 19, 0.18);
+  z-index: 950;
+  overflow: hidden;
+}
+.dbju-bell-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dbju-bell-head button { font-size: 12px; font-weight: 700; color: var(--brand-green); background: none; border: none; cursor: pointer; }
+.dbju-bell-list { overflow-y: auto; }
+.dbju-bell-empty { padding: 18px 14px; font-size: 13px; color: var(--text-muted); }
+.dbju-bell-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: inherit;
+  cursor: pointer;
+}
+.dbju-bell-item:hover { background: var(--bg-canvas); }
+.dbju-bell-item.unread { background: var(--brand-green-light); }
+.dbju-bell-icon { font-size: 18px; line-height: 1.2; }
+.dbju-bell-title { display: block; font-size: 13px; font-weight: 800; }
+.dbju-bell-body { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.dbju-bell-time { display: block; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.dbju-bell-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-green); margin-top: 6px; flex-shrink: 0; }
+@media (max-width: 600px) {
+  .dbju-bell-panel { position: fixed; left: 12px; right: 12px; top: 70px; width: auto; }
+}
+
+/* ===== Календар зайнятості на сторінці товару ===== */
+.dbju-avail { display: flex; flex-direction: column; gap: 10px; }
+.dbju-avail-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dbju-avail-months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 600px) { .dbju-avail-months { grid-template-columns: 1fr; } }
+.dbju-avail-title { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+.dbju-avail-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.dbju-avail-wd { font-size: 10px; color: var(--text-muted); text-align: center; font-weight: 700; }
+.dbju-avail-day {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dbju-avail-day.free { background: var(--pastel-sage); color: var(--brand-green); cursor: pointer; }
+.dbju-avail-day.free:disabled { cursor: default; }
+.dbju-avail-day.busy { background: #FEE2E2; color: #B91C1C; text-decoration: line-through; }
+.dbju-avail-day.past { background: transparent; color: #CBD5E1; }
+.dbju-avail-day.today { outline: 2px solid var(--brand-green); }
+.dbju-avail-legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-muted); }
+.dbju-avail-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+.dbju-avail-legend i.free { background: var(--pastel-sage); }
+.dbju-avail-legend i.busy { background: #FEE2E2; }
+
+.dbju-report-link {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dbju-report-link:hover { color: #B91C1C; }
+
+.dbju-referral-link {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.dbju-referral-link code {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #E7EFE9;
+  overflow-wrap: anywhere;
+}
+
+/* Верифікація (демо) */
+.dbju-verify-methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .dbju-verify-methods { grid-template-columns: 1fr; } }
+.dbju-verify-method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  cursor: pointer;
+  font-size: 14px;
+}
+.dbju-verify-method.active { border-color: var(--brand-green); box-shadow: 0 0 0 2px var(--brand-green-light); }
+.dbju-verify-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.dbju-verify-logo.diia { background: #000000; color: #FFFFFF; }
+.dbju-verify-logo.bankid { background: linear-gradient(135deg, #1D4ED8, #0EA5E9); color: #FFFFFF; }
+
+/* Карта каталогу */
+.dbju-view-toggle { display: inline-flex; border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden; }
+.dbju-view-toggle button { border: none; background: #FFFFFF; padding: 8px 12px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text-secondary); }
+.dbju-view-toggle button.active { background: var(--brand-green); color: #FFFFFF; }
+.dbju-catalog-map {
+  height: min(560px, 70vh);
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  z-index: 0;
+}
+.dbju-map-price { background: none; border: none; }
+.dbju-map-price span {
+  display: inline-block;
+  transform: translate(-50%, -100%);
+  background: var(--brand-dark);
+  color: var(--brand-lime);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.dbju-map-popup a { font-weight: 800; color: var(--brand-green); }
+.dbju-map-popup div { font-size: 12px; color: #475569; margin-top: 2px; }
+
+/* ===== Адмін-панель ===== */
+.dbju-admin-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.dbju-admin-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.dbju-admin-nav a {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.dbju-admin-nav a.active { background: var(--brand-dark); color: var(--brand-lime); border-color: var(--brand-dark); }
+.dbju-admin-table td { vertical-align: top; }
+.dbju-admin-table td:not(:first-child) { white-space: normal; }
+a.dbju-kpi { color: inherit; transition: border-color 0.15s ease; }
+a.dbju-kpi:hover { border-color: var(--brand-green); }
+
+/* ===== Юридичні сторінки ===== */
+.dbju-legal h1 { font-size: 32px; font-weight: 900; margin-bottom: 6px; }
+.dbju-legal h2 { font-size: 19px; font-weight: 900; margin: 22px 0 8px; }
+.dbju-legal p, .dbju-legal li { color: var(--text-secondary); font-size: 15px; line-height: 1.65; }
+.dbju-legal ul { padding-left: 20px; list-style: disc; display: flex; flex-direction: column; gap: 4px; }
+.dbju-legal a { color: var(--brand-green); font-weight: 700; }
+.dbju-legal-meta { font-size: 13px !important; color: var(--text-muted) !important; }
+
+/* ===== Мобільна версія ===== */
+.dbju-mobile-nav { display: none; }
+
+@media (max-width: 768px) {
+  .dbju-header { padding: 10px 12px; }
+  .dbju-header-container { flex-wrap: wrap; gap: 8px 10px; }
+  .dbju-header-center { order: 3; flex-basis: 100%; max-width: none; }
+  .dbju-btn-add { display: none; }
+  .dbju-user-pill { padding: 4px; }
+  .dbju-user-pill > span,
+  .dbju-user-pill .dbju-diia-badge { display: none; }
+  .dbju-page-container { padding-left: 16px; padding-right: 16px; padding-bottom: 96px; }
+  .dbju-main-title { font-size: 26px !important; }
+  .dbju-hero-section { padding: 22px; }
+  .dbju-rentals-tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .dbju-rentals-tab-btn { white-space: nowrap; }
+  .dbju-booking-modal { max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .dbju-rental-actions { flex-direction: column; }
+  .dbju-rental-actions > button { width: 100%; justify-content: center; }
+  .dbju-active-item-header { flex-wrap: wrap; }
+  .dbju-active-item-header > div:last-child { margin-left: 0 !important; align-items: flex-start !important; }
+  .dbju-profile-header-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .dbju-profile-header-card > div:last-child { align-items: flex-start !important; }
+  .dbju-list-card { align-items: flex-start; }
+  .dbju-bottom-cta-bar { position: sticky; bottom: 64px; z-index: 5; }
+  .dbju-finance-table { font-size: 13px; }
+
+  /* Нижня панель */
+  .dbju-mobile-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 890;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border-subtle);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .dbju-mobile-nav a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 4px 0;
+    border-radius: 12px;
+  }
+  .dbju-mobile-nav a.active { color: var(--brand-green); background: var(--brand-green-light); }
+  .dbju-mobile-nav-icon { position: relative; font-size: 18px; line-height: 1.1; }
+  .dbju-mobile-nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -10px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #DC2626;
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Кнопка помічника — над нижньою панеллю */
+  .dbju-chat-fab { bottom: 76px !important; }
+  .dbju-footer { padding-bottom: 90px; }
+}

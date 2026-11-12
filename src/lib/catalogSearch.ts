@@ -36,7 +36,8 @@ const textMatch = (s: string): Prisma.ProductWhereInput => ({
 
 // Умови без категорії (base) — потрібні окремо для лічильників категорій
 export function buildCatalogWhere(f: CatalogFilters): { base: Prisma.ProductWhereInput[]; where: Prisma.ProductWhereInput } {
-  const base: Prisma.ProductWhereInput[] = [{ status: { not: "HIDDEN" } }];
+  // Без прихованих оголошень і без речей заблокованих користувачів
+  const base: Prisma.ProductWhereInput[] = [{ status: { not: "HIDDEN" } }, { owner: { blockedAt: null } }];
   const q = f.q?.trim().slice(0, 100);
   if (q) base.push(textMatch(q));
 

@@ -49,6 +49,8 @@ export const Footer = () => {
           <ul className="dbju-footer-links">
             <li><Link href="/rentals">Мої оренди</Link></li>
             <li><Link href="/profile/listings">Мої оголошення</Link></li>
+            <li><Link href="/requests">Запити на речі</Link></li>
+            <li><Link href="/profile/referrals">Запросіть друзів</Link></li>
             <li><Link href="/help#how-it-works">Як працює оренда</Link></li>
             <li><Link href="/help#insurance">Програма захисту DBJU</Link></li>
             <li><Link href="/help#ai-photo">Фотозвіт повернення</Link></li>
@@ -62,8 +64,8 @@ export const Footer = () => {
           <ul className="dbju-footer-links">
             <li><a href="mailto:support@dbju.ua">support@dbju.ua</a></li>
             <li><Link href="/help#faq">Часті запитання (FAQ)</Link></li>
-            <li><Link href="/help#terms">Правила безпечної оренди</Link></li>
-            <li><Link href="/help#privacy">Політика конфіденційності</Link></li>
+            <li><Link href="/legal/terms">Правила користування</Link></li>
+            <li><Link href="/legal/privacy">Політика конфіденційності</Link></li>
           </ul>
         </div>
       </div>

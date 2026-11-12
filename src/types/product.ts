@@ -28,12 +28,14 @@ export interface Product {
   buybackRebatePercent: number;
 
   // Адреса самовивозу
-  location: string; // готовий текст для показу
+  location: string; // текст для показу: публічно — лише місто; власнику — повна адреса
   city: string | null;
   region: string | null;
   street: string | null;
-  lat: number | null;
+  lat: number | null; // точна точка — лише власнику
   lng: number | null;
+  approxLat: number | null; // приблизна точка (~1 км) для карти каталогу
+  approxLng: number | null;
 
   // Власник (з таблиці User)
   ownerId: string;

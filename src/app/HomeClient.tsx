@@ -266,7 +266,7 @@ export default function HomeClient({ initialCategory, initialQuery }: HomeProps)
                 Три прості кроки — від бронювання до повернення застави.
               </p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", textAlign: "left" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "24px", textAlign: "left" }}>
                 <div style={{ padding: "24px", borderRadius: "18px", background: "var(--bg-canvas)" }}>
                   <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "var(--brand-green)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", marginBottom: "16px" }}>
                     1

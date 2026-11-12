@@ -13,6 +13,7 @@ export interface CurrentUser {
   avatarUrl: string | null;
   bio: string | null;
   verifiedAt: string | null;
+  verifiedVia: string | null;
   plusUntil: string | null;
   createdAt: string;
 }
@@ -29,4 +30,6 @@ export interface ProfileStats {
   saved: number;
   itemsNotBought: number;
   co2Kg: number;
+  unreadNotifications: number;
+  bonusBalance: number;
 }

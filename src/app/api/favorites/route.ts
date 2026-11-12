@@ -9,7 +9,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Потрібно увійти в акаунт" }, { status: 401 });
 
   const favs = await prisma.favorite.findMany({
-    where: { userId: user.id, product: { status: { not: "HIDDEN" } } },
+    where: { userId: user.id, product: { status: { not: "HIDDEN" }, owner: { blockedAt: null } } },
     include: { product: { include: productInclude } },
     orderBy: { createdAt: "desc" },
   });

@@ -3,11 +3,19 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "../../../lib/session";
 import { MAX_UPLOAD_BYTES, MIME_BY_EXT, detectImageExt } from "../../../lib/uploads";
 import { getStorage } from "../../../lib/storage";
+import { processImage, type ImageKind } from "../../../lib/images";
+import { hit } from "../../../lib/rateLimit";
 
-// POST /api/uploads (multipart/form-data, поле "file") → { url }
+// POST /api/uploads?kind=product|avatar|report (multipart/form-data, поле "file") → { url }
+// Фото стискається у WebP, зменшується і очищується від метаданих (EXIF/GPS).
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Потрібно увійти в акаунт" }, { status: 401 });
+  if (!(await hit(`upload:${user.id}`, 60, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "Забагато завантажень. Спробуйте пізніше." }, { status: 429 });
+  }
+  const kindParam = new URL(request.url).searchParams.get("kind");
+  const kind: ImageKind = kindParam === "avatar" || kindParam === "report" ? kindParam : "product";
 
   let file: FormDataEntryValue | null;
   try {
@@ -28,9 +36,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Підтримуються лише JPG, PNG, WEBP або GIF" }, { status: 415 });
   }
 
-  const name = `${crypto.randomBytes(16).toString("hex")}.${ext}`;
+  let processed: Buffer;
   try {
-    await getStorage().put(name, buf, MIME_BY_EXT[ext]);
+    processed = await processImage(buf, kind);
+  } catch {
+    return NextResponse.json({ error: "Не вдалося обробити фото. Спробуйте інший файл." }, { status: 415 });
+  }
+
+  const name = `${crypto.randomBytes(16).toString("hex")}.webp`;
+  try {
+    await getStorage().put(name, processed, MIME_BY_EXT.webp);
   } catch (error) {
     console.error("Помилка збереження фото:", error);
     return NextResponse.json({ error: "Не вдалося зберегти фото. Спробуйте ще раз." }, { status: 502 });

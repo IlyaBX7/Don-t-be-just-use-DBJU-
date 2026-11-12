@@ -2,6 +2,7 @@ import type { Prisma, Product as DbProduct, User } from "@prisma/client";
 import type { Product } from "../types/product";
 import { CATEGORY_BY_KEY, isCategoryKey } from "./categories";
 import { toISODate } from "./dates";
+import { findCity } from "./ukraine";
 
 export const CATEGORIES = CATEGORY_BY_KEY;
 export { isCategoryKey };
@@ -15,12 +16,13 @@ export const ownerSelect = {
   rating: true,
   reviewsCount: true,
   isVerified: true,
+  blockedAt: true,
 } satisfies Prisma.UserSelect;
 
 type Owner = Pick<User, keyof typeof ownerSelect>;
 
 // Поточна оренда: річ уже в орендаря (PICKED_UP) або повернена й чекає підтвердження (RETURNED)
-export const ACTIVE_RENTAL_STATUSES = ["PICKED_UP", "RETURNED"] as const;
+export const ACTIVE_RENTAL_STATUSES = ["PICKED_UP", "RETURNED", "DISPUTED"] as const;
 
 export const productInclude = {
   owner: { select: ownerSelect },
@@ -46,8 +48,30 @@ function asStringRecord(v: Prisma.JsonValue | null): Record<string, string> {
 }
 
 // Перетворює рядок БД у формат, з яким працює фронтенд
-export function toApiProduct(p: DbProduct & { owner: Owner; bookings?: ActiveRental[] }): Product {
+type ProductRow = DbProduct & { owner: Owner; bookings?: ActiveRental[] };
+
+// Публічна адреса: лише місто (і область, якщо місто не з довідника) — без вулиці й точної точки
+function publicLocation(p: DbProduct): string {
+  if (!p.city) return p.location.split(",")[0].trim();
+  return p.region && p.region !== p.city && !findCity(p.city) ? `${p.city}, ${p.region}` : p.city;
+}
+
+// Приблизна точка для карти каталогу: округлення до ~1 км або центр міста
+function approxPoint(p: DbProduct): { lat: number; lng: number } | null {
+  if (p.lat !== null && p.lng !== null) return { lat: Math.round(p.lat * 100) / 100, lng: Math.round(p.lng * 100) / 100 };
+  const c = p.city ? findCity(p.city) : undefined;
+  return c ? { lat: c.lat, lng: c.lng } : null;
+}
+
+// Повні дані — лише для власника (і адміністратора): точна адреса потрібна для редагування
+export function toOwnerApiProduct(p: ProductRow): Product {
+  return { ...toApiProduct(p), location: p.location, street: p.street, lat: p.lat, lng: p.lng };
+}
+
+// Публічний формат товару (для всіх). Увага: функцію передають у .map — другий аргумент не додавати.
+export function toApiProduct(p: ProductRow): Product {
   const cat = CATEGORIES[p.category];
+  const approx = approxPoint(p);
   const rental = p.bookings?.[0];
   return {
     id: p.id,
@@ -68,12 +92,14 @@ export function toApiProduct(p: DbProduct & { owner: Owner; bookings?: ActiveRen
     marketBuyPrice: p.marketBuyPrice ?? undefined,
     purchasePrice: p.purchasePrice ?? undefined,
     buybackRebatePercent: p.buybackPercent,
-    location: p.location,
+    location: publicLocation(p),
     city: p.city,
     region: p.region,
-    street: p.street,
-    lat: p.lat,
-    lng: p.lng,
+    street: null,
+    lat: null,
+    lng: null,
+    approxLat: approx?.lat ?? null,
+    approxLng: approx?.lng ?? null,
     ownerId: p.owner.id,
     ownerName: p.owner.name,
     ownerInitials: p.owner.avatar || p.owner.name.slice(0, 2).toUpperCase(),
@@ -87,7 +113,7 @@ export function toApiProduct(p: DbProduct & { owner: Owner; bookings?: ActiveRen
     accentColor: cat.accent,
     status: p.status,
     rentedUntil: rental ? toISODate(rental.endDate) : null,
-    rentalPhase: rental ? (rental.status === "RETURNED" ? "RETURNING" : "IN_USE") : null,
+    rentalPhase: rental ? (rental.status === "PICKED_UP" ? "IN_USE" : "RETURNING") : null,
     condition: p.condition,
     createdAt: p.createdAt.toISOString(),
   };

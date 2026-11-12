@@ -51,7 +51,8 @@ function firstFreeRange(today: string, days: number, booked: Range[]): Range | n
 
 export const BookingModal = ({ product, onClose, initialDays }: BookingModalProps) => {
   const router = useRouter();
-  const { user, isPlus, openAuth, refreshStats } = useApp();
+  const { user, isPlus, openAuth, refreshStats, stats } = useApp();
+  const [useBonus, setUseBonus] = useState(true);
 
   const [today, setToday] = useState<string | null>(null);
   const [rental, setRental] = useState<{ rentedUntil: string | null; rentalPhase: "IN_USE" | "RETURNING" | null }>({
@@ -107,6 +108,11 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
       ),
     [product, daysCount, deliveryMethod, isPlus]
   );
+
+  // Бонуси реферальної програми покривають оренду й сервісний збір (не доставку)
+  const bonusAvailable = stats?.bonusBalance ?? 0;
+  const bonusApplied = useBonus ? Math.min(bonusAvailable, prices.rentAmount + prices.serviceFee) : 0;
+  const payable = prices.totalAmount - bonusApplied;
 
   // Сітка місяця (тиждень з понеділка)
   const month = useMemo(() => {
@@ -186,6 +192,7 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
           endDate,
           deliveryMethod,
           deliveryAddress: courierAddress,
+          useBonus: bonusApplied > 0,
         },
       });
       setIsSuccess(true);
@@ -208,7 +215,7 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
   const isOwnProduct = user?.id === product.ownerId;
 
   const deliveryCards: { key: DeliveryMethod; icon: React.ReactNode; sub: string }[] = [
-    { key: "PICKUP", icon: <UserIcon size={20} />, sub: `У власника: ${product.location}` },
+    { key: "PICKUP", icon: <UserIcon size={20} />, sub: `${product.location} · точну адресу побачите після бронювання` },
     { key: "COURIER", icon: <ScooterIcon size={20} />, sub: "До дверей за 2 год" },
   ];
 
@@ -418,11 +425,21 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
                 </div>
               )}
 
+              {bonusAvailable > 0 && (
+                <label className="dbju-receipt-row" style={{ cursor: "pointer", color: "var(--brand-green)" }}>
+                  <span>
+                    <input type="checkbox" checked={useBonus} onChange={(e) => setUseBonus(e.target.checked)} style={{ marginRight: "6px" }} />
+                    Бонуси (є {bonusAvailable} ₴)
+                  </span>
+                  <span>{bonusApplied > 0 ? `−${bonusApplied} ₴` : "0 ₴"}</span>
+                </label>
+              )}
+
               <div className="dbju-receipt-divider" />
 
               <div className="dbju-receipt-total">
                 <span>Разом</span>
-                <span>{prices.totalAmount} ₴</span>
+                <span>{payable} ₴</span>
               </div>
 
               <div className="dbju-deposit-note">
@@ -445,7 +462,7 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
                 : isPaying
                   ? "Оплата..."
                   : startDate && endDate
-                    ? `Оплатити ${prices.totalAmount} ₴`
+                    ? `Оплатити ${payable} ₴`
                     : "Оберіть дати"}
             </button>
           </>

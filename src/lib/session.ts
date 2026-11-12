@@ -53,6 +53,11 @@ export async function getCurrentSession() {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
     return null;
   }
+  // Заблокований користувач — закриваємо всі його сесії
+  if (session.user.blockedAt) {
+    await prisma.session.deleteMany({ where: { userId: session.userId } }).catch(() => {});
+    return null;
+  }
   return session;
 }
 

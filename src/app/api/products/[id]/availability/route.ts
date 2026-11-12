@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/products/[i
     today: todayISO(),
     // Річ зараз в орендаря — бронювання закрите до повернення
     rentedUntil: active ? toISODate(active.endDate) : null,
-    rentalPhase: active ? (active.status === "RETURNED" ? "RETURNING" : "IN_USE") : null,
+    rentalPhase: active ? (active.status === "PICKED_UP" ? "IN_USE" : "RETURNING") : null,
     booked: bookings.map((b) => ({ start: toISODate(b.startDate), end: toISODate(b.endDate) })),
   });
 }
