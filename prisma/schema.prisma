@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// Таблиця Користувачів
+model User {
+  id           String    @id @default(uuid())
+  name         String    @db.VarChar(100) // повне ім'я для показу = firstName + lastName
+  firstName    String    @default("") @db.VarChar(50)
+  lastName     String    @default("") @db.VarChar(50)
+  email        String    @unique @db.VarChar(191)
+  password     String    @db.VarChar(255) // scrypt: "salt:hash"
+  role         Role      @default(USER)
+  rating       Float     @default(0) // середня оцінка з таблиці Review (0 — відгуків ще немає)
+  reviewsCount Int       @default(0)
+  isVerified   Boolean   @default(false) // підтверджено через Дію
+  verifiedAt   DateTime?
+  phone        String?   @db.VarChar(32)
+  avatar       String?   @db.VarChar(255) // ініціали
+  avatarUrl    String?   @db.VarChar(255) // фото профілю (/api/uploads/...)
+  bio          String?   @db.VarChar(500) // «Про себе» на публічній сторінці
+
+  products        Product[]
+  sessions        Session[]
+  favorites       Favorite[]
+  rentals         Booking[]     @relation("RenterBookings")
+  ownerOrders     Booking[]     @relation("OwnerBookings")
+  payouts         Payout[]
+  cards           PaymentCard[]
+  reviewsWritten  Review[]      @relation("ReviewAuthor")
+  reviewsReceived Review[]      @relation("ReviewTarget")
+
+  plusUntil DateTime? // підписка DBJU+ активна до цієї дати
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+}
+
+// Таблиця Сесій (вхід користувача)
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique @db.Char(64) // sha256 від токена з cookie
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent String?  @db.VarChar(255)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum Category {
+  repair
+  home
+  tech
+  tourism
+  sport
+  kids
+  transport
+  gaming
+  pets
+  garden
+  events
+  music
+  fashion
+}
+
+enum ProductStatus {
+  AVAILABLE
+  RENTED
+  HIDDEN
+}
+
+// Таблиця Товарів (ціни — цілі гривні)
+model Product {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(150)
+  fullTitle   String?  @db.VarChar(255)
+  description String   @db.Text
+  category    Category
+  images      Json // масив URL зображень
+
+  rentalPricePerDay Int
+  price3Days        Int? // ціна за 3 доби (якщо є знижка)
+  priceWeek         Int? // ціна за тиждень
+  depositAmount     Int
+  minRentDays       Int  @default(1)
+  marketBuyPrice    Int? // ціна нового в магазині
+  purchasePrice     Int? // ціна викупу у власника
+  buybackPercent    Int  @default(30)
+
+  location String  @db.VarChar(150)
+  city     String? @db.VarChar(80) // місто (з довідника або введене вручну)
+  region   String? @db.VarChar(80) // область
+  street   String? @db.VarChar(150) // вулиця, будинок
+  lat      Float? // точка на карті (необов'язково)
+  lng      Float?
+
+  status      ProductStatus @default(AVAILABLE)
+  condition   String        @default("GOOD") @db.VarChar(32)
+  includedKit Json? // масив рядків
+  features    Json? // об'єкт { "Потужність": "800 Вт" }
+  rentalCount Int           @default(0)
+
+  ownerId   String
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+  favorites Favorite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([ownerId])
+  @@index([city])
+}
+
+enum DeliveryMethod {
+  PICKUP
+  COURIER
+}
+
+// Етапи оренди: оплачено → отримано → повернуто (фотозвіт) → завершено власником
+enum BookingStatus {
+  PAID
+  PICKED_UP
+  RETURNED
+  COMPLETED
+  CANCELLED
+}
+
+// Таблиця Бронювань (оренд)
+model Booking {
+  id   String @id @default(uuid())
+  code String @unique @db.VarChar(32) // код замовлення
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  renterId  String
+  renter    User     @relation("RenterBookings", fields: [renterId], references: [id], onDelete: Cascade)
+  ownerId   String
+  owner     User     @relation("OwnerBookings", fields: [ownerId], references: [id], onDelete: Cascade)
+  reviews   Review[]
+
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date // включно
+  days      Int
+
+  deliveryMethod  DeliveryMethod
+  deliveryAddress String?        @db.VarChar(255)
+  rentAmount      Int
+  deliveryCost    Int
+  protection      Boolean        @default(true)
+  protectionCost  Int
+  serviceFee      Int
+  ownerCommission Int            @default(0) // комісія з власника (15% від оренди)
+  ownerPayout     Int            @default(0) // отримує власник = оренда − комісія
+  totalAmount     Int
+  depositAmount   Int
+
+  status      BookingStatus @default(PAID)
+  returnPhoto String?       @db.VarChar(255)
+  ownerNote   String?       @db.VarChar(500)
+
+  paidAt      DateTime  @default(now())
+  pickedUpAt  DateTime?
+  returnedAt  DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([productId, startDate])
+  @@index([renterId])
+  @@index([ownerId])
+}
+
+// Обране (список бажань)
+model Favorite {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+  @@index([productId])
+}
+
+// Виведення заробітку власником
+model Payout {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  card      String   @db.VarChar(32)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Банківські картки для виплат. Повний номер НЕ зберігається — лише останні 4 цифри.
+model PaymentCard {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand     String   @db.VarChar(16) // visa | mastercard | other
+  last4     String   @db.Char(4)
+  expMonth  Int
+  expYear   Int
+  holder    String   @db.VarChar(100)
+  label     String?  @db.VarChar(50) // напр. "monobank"
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum ReviewRole {
+  OWNER // відгук про власника (пише орендар)
+  RENTER // відгук про орендаря (пише власник)
+}
+
+// Відгуки після завершеної оренди: кожна сторона може залишити один відгук про іншу
+model Review {
+  id         String     @id @default(uuid())
+  bookingId  String
+  booking    Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User       @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  targetId   String
+  target     User       @relation("ReviewTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  targetRole ReviewRole
+  rating     Int // 1–5
+  text       String?    @db.VarChar(1000)
+  createdAt  DateTime   @default(now())
+
+  @@unique([bookingId, authorId])
+  @@index([targetId, createdAt])
+}

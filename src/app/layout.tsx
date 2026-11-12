@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Header } from "../components/Header/Header"; // Підключаємо наш Header
+import { Header } from "../components/Header/Header";
+import { AppProvider } from "../components/AppProvider";
+import { AssistantWidget } from "../components/AssistantWidget";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "DBJU | Оренда техніки",
-  description: "Оренда, викуп та тестування техніки",
+  title: "DBJU — Don't Buy, Just Use | Оренда речей між людьми",
+  description: "Орендуй потрібні речі на день, тиждень чи місяць — і заробляй на тих, що лежать удома без діла.",
 };
 
 export default function RootLayout({
@@ -24,10 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="uk" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="uk">
       <body>
-        <Header />
-        {children}
+        <AppProvider>
+          <Header />
+          {children}
+          <AssistantWidget />
+        </AppProvider>
       </body>
     </html>
   );

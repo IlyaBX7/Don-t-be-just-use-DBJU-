@@ -1,0 +1,54 @@
+services:
+  mysql:
+    image: mariadb:latest
+    container_name: dbju_mysql
+    restart: always
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: dbju
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    container_name: dbju_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8081:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # Локальне S3-сумісне сховище для перевірки хмарного режиму фото.
+  # Не запускається за замовчуванням: docker compose --profile s3 up -d
+  s3:
+    image: adobe/s3mock:5.2.3
+    container_name: dbju_s3
+    profiles: ["s3"]
+    restart: unless-stopped
+    user: root # том /data створюється від root, а образ за замовчуванням працює від uid 1000
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: dbju-photos
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /data
+    ports:
+      - "9090:9090"
+    volumes:
+      - s3_data:/data
+
+volumes:
+  mysql_data:
+  s3_data:
