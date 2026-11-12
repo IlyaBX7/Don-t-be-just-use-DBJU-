@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "../../components/Footer/Footer";
-import { DELIVERY_OPTIONS, OWNER_COMMISSION_RATE, PLUS_PRICE, SERVICE_FEE_RATE, splitRent } from "../../lib/pricing";
+import { DELIVERY_OPTIONS, PLUS_PRICE, SERVICE_FEE_RATE } from "../../lib/pricing";
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
-const EXAMPLE = splitRent(200, false);
 
 export const metadata: Metadata = {
   title: "Допомога — DBJU",
@@ -14,7 +13,6 @@ export const metadata: Metadata = {
 const SECTIONS = [
   { id: "how-it-works", title: "Як працює оренда" },
   { id: "rent-out", title: "Як здати свою річ" },
-  { id: "fees", title: "Комісії та виплати" },
   { id: "insurance", title: "Програма захисту DBJU" },
   { id: "ai-photo", title: "Фотозвіт повернення" },
   { id: "delivery", title: "Отримання та доставка" },
@@ -64,33 +62,6 @@ export default function HelpPage() {
               <li>Дохід за кожну завершену оренду зараховується на баланс у профілі, звідки його можна вивести на картку.</li>
               <li>Оголошення можна будь-коли сховати з каталогу або видалити (якщо немає активних бронювань).</li>
             </ul>
-          </section>
-
-          <section id="fees" className="dbju-help-section">
-            <h2>Скільки коштує і хто що отримує</h2>
-            <p>
-              Власник сам встановлює ціну оренди. DBJU бере комісію лише з успішних угод — разом {pct(SERVICE_FEE_RATE + OWNER_COMMISSION_RATE)} від вартості оренди:
-            </p>
-            <ul>
-              <li><strong>{pct(SERVICE_FEE_RATE)} — сервісний збір з орендаря.</strong> Додається до ціни і покриває гарантію безпечної угоди.</li>
-              <li><strong>{pct(OWNER_COMMISSION_RATE)} — комісія з власника.</strong> Утримується з виплати власнику.</li>
-            </ul>
-            <table className="dbju-help-table">
-              <caption>Приклад: оренда дрилі на 1 добу</caption>
-              <tbody>
-                <tr><td>Ціна оренди, встановлена власником</td><td>{EXAMPLE.rentAmount} ₴</td></tr>
-                <tr><td>Сервісний збір орендаря ({pct(SERVICE_FEE_RATE)})</td><td>+{EXAMPLE.serviceFee} ₴</td></tr>
-                <tr className="strong"><td>Сплачує орендар</td><td>{EXAMPLE.rentAmount + EXAMPLE.serviceFee} ₴</td></tr>
-                <tr><td>Комісія з власника ({pct(OWNER_COMMISSION_RATE)})</td><td>−{EXAMPLE.ownerCommission} ₴</td></tr>
-                <tr className="strong"><td>Отримує власник</td><td>{EXAMPLE.ownerPayout} ₴</td></tr>
-                <tr><td>Дохід DBJU ({EXAMPLE.serviceFee} + {EXAMPLE.ownerCommission})</td><td>{EXAMPLE.platformRevenue} ₴</td></tr>
-              </tbody>
-            </table>
-            <p style={{ marginTop: "10px" }}>
-              Кур&apos;єр ({DELIVERY_OPTIONS.COURIER.cost} ₴) — окрема послуга, комісія на неї не нараховується. Застава лише блокується
-              на картці і повертається після підтвердження повернення. Гроші за оренду зараховуються на баланс власника, щойно він
-              підтвердить повернення речі, — звідти їх можна вивести на картку.
-            </p>
           </section>
 
           <section id="insurance" className="dbju-help-section">
