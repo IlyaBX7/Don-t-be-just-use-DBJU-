@@ -62,6 +62,8 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
   const [booked, setBooked] = useState<Range[]>([]);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
+  // true — дату отримання вже обрано, наступний клік задає дату повернення
+  const [pickingEnd, setPickingEnd] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
 
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("PICKUP");
@@ -77,6 +79,7 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
       .then((data) => {
         setToday(data.today);
         setRental({ rentedUntil: data.rentedUntil, rentalPhase: data.rentalPhase });
+        setPickingEnd(false);
         setBooked(data.booked);
         const len = Math.max(initialDays ?? product.minRentDays, product.minRentDays);
         const free = firstFreeRange(data.today, len, data.booked);
@@ -134,24 +137,17 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
 
   const handleDayClick = (day: string) => {
     setError(null);
-    if (!startDate || (startDate && endDate)) {
-      // Новий вибір: одразу ставимо мінімальний термін, якщо він вільний
+    if (!pickingEnd || !startDate || day < startDate) {
+      // Перший клік — дата отримання. Одразу показуємо мінімальний термін (якщо вільний),
+      // щоб було видно ціну, але чекаємо другого кліку — дати повернення.
       const minEnd = addDays(day, product.minRentDays - 1);
-      if (product.minRentDays > 1 && rangeIsFree(day, minEnd, booked) && lastBookable && minEnd <= lastBookable) {
-        setStartDate(day);
-        setEndDate(minEnd);
-      } else {
-        setStartDate(day);
-        setEndDate(product.minRentDays > 1 ? null : day);
-      }
-      return;
-    }
-    // Вибір дати повернення
-    if (day < startDate) {
+      const minFits = rangeIsFree(day, minEnd, booked) && (!lastBookable || minEnd <= lastBookable);
       setStartDate(day);
-      setEndDate(null);
+      setEndDate(minFits ? minEnd : null);
+      setPickingEnd(true);
       return;
     }
+    // Другий клік — дата повернення
     if (!rangeIsFree(startDate, day, booked)) {
       setError("У вибраному проміжку є зайняті дні");
       return;
@@ -166,6 +162,7 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
       return;
     }
     setEndDate(day);
+    setPickingEnd(false);
   };
 
   const handlePay = async () => {
@@ -289,7 +286,7 @@ export const BookingModal = ({ product, onClose, initialDays }: BookingModalProp
                 </div>
                 <span className="dbju-cal-range-text">
                   {startDate && endDate
-                    ? `${formatRange(startDate, endDate)} · ${daysCount} ${pluralDays(daysCount)}`
+                    ? `${formatRange(startDate, endDate)} · ${daysCount} ${pluralDays(daysCount)}${pickingEnd ? " — оберіть дату повернення" : ""}`
                     : startDate
                       ? "оберіть дату повернення"
                       : "оберіть дату отримання"}
