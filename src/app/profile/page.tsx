@@ -38,7 +38,7 @@ export default function ProfilePage() {
   };
 
   const memberSince = user
-    ? new Intl.DateTimeFormat("uk-UA", { month: "long", year: "numeric" }).format(new Date(user.createdAt))
+    ? new Intl.DateTimeFormat("uk-UA", { timeZone: "Europe/Kyiv", month: "long", year: "numeric" }).format(new Date(user.createdAt))
     : "";
 
   return (
@@ -153,7 +153,7 @@ export default function ProfilePage() {
                 </div>
                 <p className="dbju-subscription-benefits">
                   Оренди без сервісного збору 5% · пріоритетна підтримка
-                  {isPlus && user.plusUntil && ` · активна до ${new Date(user.plusUntil).toLocaleDateString("uk-UA")}`}
+                  {isPlus && user.plusUntil && ` · активна до ${new Date(user.plusUntil).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}`}
                 </p>
                 <button type="button" className="dbju-btn-try-free" onClick={() => setModal("plus")}>
                   {isPlus ? "✓ Підписка активна — керувати" : "Спробувати місяць безкоштовно"}

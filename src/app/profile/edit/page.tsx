@@ -308,7 +308,7 @@ function DiiaSection({ user }: { user: CurrentUser }) {
             <CheckIcon size={14} />
             <span>{user.verifiedVia === "BANKID" ? "BankID ✓" : "ДІЯ ✓"} Особу підтверджено</span>
           </div>
-          {user.verifiedAt && <span className="dbju-settings-hint" style={{ margin: 0 }}>з {new Date(user.verifiedAt).toLocaleDateString("uk-UA")}</span>}
+          {user.verifiedAt && <span className="dbju-settings-hint" style={{ margin: 0 }}>з {new Date(user.verifiedAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}</span>}
         </div>
         <p className="dbju-settings-hint" style={{ marginTop: "10px" }}>
           Орендарі та власники бачать позначку «ДІЯ ✓» поруч з вашим ім&apos;ям — вам охочіше довіряють речі.
@@ -500,7 +500,7 @@ function PlusSection({ user }: { user: CurrentUser }) {
           Оренди без сервісного збору 5% · пріоритетна підтримка
           <br />
           {isPlus && user.plusUntil
-            ? `Активна до ${new Date(user.plusUntil).toLocaleDateString("uk-UA")}`
+            ? `Активна до ${new Date(user.plusUntil).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}`
             : "Зараз не активна · перший місяць безкоштовно"}
         </p>
         {isPlus ? (

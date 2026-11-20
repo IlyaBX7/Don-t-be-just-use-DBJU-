@@ -27,6 +27,11 @@ export async function resetHits(key: string): Promise<void> {
   await prisma.rateLimitHit.deleteMany({ where: { key } });
 }
 
+// IP відвідувача за проксі хостингу. X-Real-IP ставить сам проксі (Railway, Vercel, nginx).
+// З X-Forwarded-For беремо ОСТАННЮ адресу — її дописав наш проксі; першу клієнт може підробити.
 export function clientIp(headers: Headers): string {
-  return headers.get("x-forwarded-for")?.split(",")[0].trim() || headers.get("x-real-ip") || "local";
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const chain = headers.get("x-forwarded-for")?.split(",").map((s) => s.trim()).filter(Boolean);
+  return chain?.length ? chain[chain.length - 1] : "local";
 }

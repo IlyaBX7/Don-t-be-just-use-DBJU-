@@ -21,3 +21,10 @@ export function verifyPassword(password: string, combinedHash: string): boolean 
     return false;
   }
 }
+
+// Тестовий пароль адміна з локальної розробки. Якщо базу перенесли на сервер разом з ним,
+// вхід з таким паролем на сервері блокується, поки не задано новий (npm run db:seed з ADMIN_PASSWORD).
+const DEV_ADMIN_PASSWORD = "admin123";
+export function isBlockedDevPassword(password: string): boolean {
+  return process.env.NODE_ENV === "production" && password === DEV_ADMIN_PASSWORD;
+}

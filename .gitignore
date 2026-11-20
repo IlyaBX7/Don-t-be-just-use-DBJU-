@@ -43,3 +43,6 @@ next-env.d.ts
 
 # завантажені користувачами фото
 /uploads
+
+# вивантаження бази (npm run db:export)
+/backups

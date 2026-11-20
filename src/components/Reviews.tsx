@@ -37,7 +37,7 @@ export const ReviewCard = ({ review, hideProduct = false }: { review: ApiReview;
       <div style={{ flex: 1, minWidth: 0 }}>
         <Link href={`/users/${review.author.id}`} style={{ fontWeight: 800 }}>{review.author.name}</Link>
         <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-          {new Date(review.createdAt).toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" })}
+          {new Date(review.createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv", day: "numeric", month: "long", year: "numeric" })}
           {" · "}
           {review.targetRole === "OWNER" ? "як власник" : "як орендар"}
         </div>

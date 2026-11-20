@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../../lib/prisma";
-import { hashPassword } from "../../../../lib/auth";
+import { hashPassword, isBlockedDevPassword } from "../../../../lib/auth";
 import { createSession, toPublicUser } from "../../../../lib/session";
 import {
   EMAIL_RE,
@@ -50,6 +50,9 @@ export async function POST(request: Request) {
         { error: `Пароль повинен містити від ${MIN_PASSWORD} до ${MAX_PASSWORD} символів` },
         { status: 400 }
       );
+    }
+    if (isBlockedDevPassword(password)) {
+      return NextResponse.json({ error: "Цей пароль занадто простий. Оберіть інший." }, { status: 400 });
     }
 
     // Реферальна програма: код друга з посилання (?ref=…) зберігається в cookie

@@ -97,7 +97,7 @@ export default function ReferralsPage() {
                 {data.invited.map((i) => (
                   <div key={i.id} className="dbju-card-row" style={{ marginTop: "8px" }}>
                     <span style={{ flex: 1, fontWeight: 700 }}>{i.name}</span>
-                    <span className="dbju-settings-hint" style={{ margin: 0 }}>з {new Date(i.joinedAt).toLocaleDateString("uk-UA")}</span>
+                    <span className="dbju-settings-hint" style={{ margin: 0 }}>з {new Date(i.joinedAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}</span>
                     <span className={`dbju-status-pill ${i.rewarded ? "picked" : "paid"}`}>{i.rewarded ? `+${data.bonusPerFriend} ₴` : "чекаємо першу оренду"}</span>
                   </div>
                 ))}
@@ -110,7 +110,7 @@ export default function ReferralsPage() {
                 {data.history.map((h) => (
                   <div key={h.id} className="dbju-card-row" style={{ marginTop: "8px" }}>
                     <span style={{ flex: 1 }}>{REASON[h.reason] ?? h.reason}</span>
-                    <span className="dbju-settings-hint" style={{ margin: 0 }}>{new Date(h.createdAt).toLocaleDateString("uk-UA")}</span>
+                    <span className="dbju-settings-hint" style={{ margin: 0 }}>{new Date(h.createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}</span>
                     <strong style={{ color: h.amount > 0 ? "var(--brand-green)" : "var(--text-primary)" }}>{h.amount > 0 ? "+" : ""}{h.amount} ₴</strong>
                   </div>
                 ))}

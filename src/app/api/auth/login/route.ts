@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
-import { verifyPassword } from "../../../../lib/auth";
+import { isBlockedDevPassword, verifyPassword } from "../../../../lib/auth";
 import { createSession, toPublicUser } from "../../../../lib/session";
 import { clientIp, countHits, hit, resetHits } from "../../../../lib/rateLimit";
 
@@ -40,6 +40,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Невірний email або пароль" },
         { status: 401 }
+      );
+    }
+    if (isBlockedDevPassword(String(password))) {
+      console.error(`Вхід для ${user.email} з тестовим паролем заблоковано. Задайте новий: ADMIN_PASSWORD=... npm run db:seed`);
+      return NextResponse.json(
+        { error: "Цей пароль використовувався лише для тестування і на сайті не діє. Зверніться до адміністратора." },
+        { status: 403 }
       );
     }
     if (user.blockedAt) {

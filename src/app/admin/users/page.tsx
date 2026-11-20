@@ -68,7 +68,7 @@ export default function AdminUsers() {
                 <td>
                   <Link href={`/users/${u.id}`} style={{ fontWeight: 800, color: "var(--text-primary)" }}>{u.name}</Link>
                   <div className="dbju-settings-hint" style={{ margin: 0 }}>
-                    {u.role === "ADMIN" ? "адмін · " : ""}{u.isVerified ? "ДІЯ ✓ · " : ""}з {new Date(u.createdAt).toLocaleDateString("uk-UA")}
+                    {u.role === "ADMIN" ? "адмін · " : ""}{u.isVerified ? "ДІЯ ✓ · " : ""}з {new Date(u.createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}
                   </div>
                 </td>
                 <td>{u.email}<div className="dbju-settings-hint" style={{ margin: 0 }}>{u.phone ?? "—"}</div></td>

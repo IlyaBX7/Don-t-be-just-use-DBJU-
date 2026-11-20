@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getCurrentSession } from "../../../../lib/session";
-import { hashPassword, verifyPassword } from "../../../../lib/auth";
+import { hashPassword, isBlockedDevPassword, verifyPassword } from "../../../../lib/auth";
 import { MAX_PASSWORD, MIN_PASSWORD } from "../../../../lib/users";
 
 // POST /api/user/password { currentPassword, newPassword }
@@ -20,6 +20,9 @@ export async function POST(request: Request) {
       { error: `Новий пароль має містити від ${MIN_PASSWORD} до ${MAX_PASSWORD} символів` },
       { status: 400 }
     );
+  }
+  if (isBlockedDevPassword(next)) {
+    return NextResponse.json({ error: "Цей пароль занадто простий. Оберіть інший." }, { status: 400 });
   }
   if (next === currentPassword) {
     return NextResponse.json({ error: "Новий пароль має відрізнятися від поточного" }, { status: 400 });

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Налаштування інструментів ШІ-агентів (prisma skills), не код сайту
+    "prisma.config.ts",
   ]),
 ]);
 

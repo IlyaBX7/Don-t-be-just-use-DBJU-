@@ -192,7 +192,7 @@ function RequestCard({ r, highlight, onChange }: { r: ItemRequest; highlight: bo
           </div>
           <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
             <Link href={`/users/${r.author.id}`} style={{ fontWeight: 700, color: "var(--text-secondary)" }}>{r.author.name}</Link>
-            {r.author.isVerified && " · ДІЯ ✓"} · {new Date(r.createdAt).toLocaleDateString("uk-UA")}
+            {r.author.isVerified && " · ДІЯ ✓"} · {new Date(r.createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })}
           </div>
         </div>
       </div>

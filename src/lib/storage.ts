@@ -108,6 +108,10 @@ const globalForStorage = globalThis as unknown as { dbjuStorage?: Storage };
 export function getStorage(): Storage {
   if (!globalForStorage.dbjuStorage) {
     globalForStorage.dbjuStorage = process.env.STORAGE_DRIVER === "s3" ? new S3Storage() : new LocalStorage();
+    if (globalForStorage.dbjuStorage.name === "local" && process.env.NODE_ENV === "production") {
+      // На більшості хостингів диск тимчасовий: після кожного оновлення сайту локальні фото зникнуть
+      console.warn("[storage] Фото зберігаються на локальному диску сервера. На хостингу задайте STORAGE_DRIVER=s3 (Cloudflare R2).");
+    }
   }
   return globalForStorage.dbjuStorage;
 }

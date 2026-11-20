@@ -90,7 +90,7 @@ export default function PublicUserPage() {
   if (!profile || !products || !reviews) return <PageLoading />;
 
   const isMe = me?.id === profile.id;
-  const since = new Intl.DateTimeFormat("uk-UA", { month: "long", year: "numeric" }).format(new Date(profile.createdAt));
+  const since = new Intl.DateTimeFormat("uk-UA", { timeZone: "Europe/Kyiv", month: "long", year: "numeric" }).format(new Date(profile.createdAt));
   const s = profile.stats;
 
   return (
@@ -228,7 +228,7 @@ export default function PublicUserPage() {
             <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
               <li>
                 {profile.isVerified
-                  ? `✅ Особу підтверджено через Дію${profile.verifiedAt ? ` (${new Date(profile.verifiedAt).toLocaleDateString("uk-UA")})` : ""}`
+                  ? `✅ Особу підтверджено через Дію${profile.verifiedAt ? ` (${new Date(profile.verifiedAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })})` : ""}`
                   : "⚪ Особу ще не підтверджено через Дію"}
               </li>
               <li>📅 На DBJU з {since}</li>
